@@ -7,6 +7,10 @@ plugins {
 group = 'server'
 version = '0.0.1-SNAPSHOT'
 
+bootJar {
+	archiveFileName = 'cubetalk-server.jar' // JAR 파일 이름 설정
+}
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(17)
