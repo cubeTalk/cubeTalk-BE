@@ -1,0 +1,46 @@
+version: '3'
+services:
+  mongodb:
+    image: mongodb/mongodb-community-server:5.0.17-ubuntu2004
+    container_name: mongo_new
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME} # 기본 관리자 계정의 사용자 이름
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}  # 기본 관리자 계정의 비밀번호
+    ports:
+      - "${MONGO_PORT}:${MONGO_PORT}"
+    volumes:
+      - db-data:/mongo
+
+  app1:
+    image: cubetalk-server:1.0
+    container_name: spring-app1-container
+    ports:
+      - "8081:8080"
+    depends_on:
+      - mongodb
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB_NAME}
+
+  app2:
+    image: cubetalk-server:1.0
+    container_name: spring-app2-container
+    ports:
+      - "8082:8080"
+    depends_on:
+      - mongodb
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB_NAME}
+
+
+  app3:
+    image: cubetalk-server:1.0
+    container_name: spring-app3-container
+    ports:
+      - "8083:8080"
+    depends_on:
+      - mongodb
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB_NAME}
+
+volumes:
+  db-data:
