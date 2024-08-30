@@ -9,11 +9,14 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import server.cubeTalk.common.entity.BaseTimeStamp;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Getter
-@Document(collation = "chatRoom")
+@Document(collection = "chatRoom")
 public class ChatRoom extends BaseTimeStamp {
 
     @Id
@@ -27,8 +30,8 @@ public class ChatRoom extends BaseTimeStamp {
     private String ownerId; //member의 id를 참조
     private String chatStatus;
     private DabateSettings debateSettings;
-    private List<Participant> participants; // 참여자 목록
-    private List<SubChatRoom> subChatRooms; // 서브 채팅방 목록
+    private List<Participant> participants = new ArrayList<>(); // 참여자 목록
+    private List<SubChatRoom> subChatRooms = new ArrayList<>(); // 서브 채팅방 목록
 
 
 }
