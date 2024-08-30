@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import server.cubeTalk.chat.model.dto.ChatRoomCreateRequestDto;
 import server.cubeTalk.chat.model.dto.ChatRoomCreateResponseDto;
+import server.cubeTalk.chat.service.ChatRoomService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
 import java.util.UUID;
@@ -25,19 +26,18 @@ import java.util.UUID;
 @RequestMapping("/chat")
 public class ChatController {
 
-    @PostMapping("/create")
+    private final ChatRoomService chatRoomService;
+
+    @PostMapping()
     @Operation(summary = "채팅방 생성 API", description = "채팅방 생성시 사용하는 API")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "success",
+            @ApiResponse(responseCode = "200", description = "success",
                     content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))})
     })
     public ResponseEntity<CommonResponseDto<ChatRoomCreateResponseDto>> createChatRoom(
             @RequestBody ChatRoomCreateRequestDto requestDto) {
 
-        Long chatRoomId = 1L; // test 용
-        String userId = UUID.randomUUID().toString(); // 고유 식별자 생성 (test용)
-
-        ChatRoomCreateResponseDto responseDto = new ChatRoomCreateResponseDto(chatRoomId, userId);
+            ChatRoomCreateResponseDto responseDto = chatRoomService.createChatRoom(requestDto);
 
         return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.CREATED);
     }
