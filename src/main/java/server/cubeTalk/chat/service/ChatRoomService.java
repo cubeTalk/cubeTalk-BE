@@ -75,9 +75,16 @@ public class ChatRoomService {
             enterMember = memberId;
         }
 
-        String nickName = chatRoomJoinRequestDto.getNickName().isEmpty()
-                ? RandomNicknameGenerator.generateNickname()
-                : chatRoomJoinRequestDto.getNickName();
+        String nickName;
+        if (chatRoomJoinRequestDto.getNickName().isEmpty()) {
+            nickName = RandomNicknameGenerator.generateNickname();
+        } else {
+            if (validateNickName(chatRoomJoinRequestDto.getNickName())) {
+                nickName = chatRoomJoinRequestDto.getNickName();
+            } else {
+                throw new IllegalArgumentException("이미 사용중인 닉네임 입니다.");
+            }
+        }
 
         Member member = Member.builder()
                 .memberId(enterMember)
@@ -125,8 +132,8 @@ public class ChatRoomService {
         return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, channelId, subchannelId, nickName);
     }
 
+    /* 중복 닉네임 검증 */
     public boolean validateNickName(String nickName) {
-        if (memberRepository.existsByNickName(nickName).isPresent()) return false;
-        return true;
+        return !memberRepository.existsByNickName(nickName); // 존재하면 false 반환
     }
 }

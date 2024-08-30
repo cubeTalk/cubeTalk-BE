@@ -46,7 +46,7 @@ public class ChatController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "success",
             content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
-            @ApiResponse(responseCode = "400", description = "유효하지 않은 (ownerId)방장 정보입니다.",
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 (ownerId)방장 정보입니다. or 이미 사용중인 닉네임입니다.",
                     content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))})
     })
     public ResponseEntity<CommonResponseDto<ChatRoomJoinResponseDto>> joinChatRoom(
