@@ -6,9 +6,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import server.cubeTalk.chat.model.dto.ChatRoomCreateRequestDto;
 import server.cubeTalk.chat.model.dto.ChatRoomCreateResponseDto;
@@ -20,6 +23,7 @@ import server.cubeTalk.common.dto.CommonResponseDto;
 import java.util.UUID;
 
 @Tag(name = "채팅", description = "채팅 API")
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/chat")
@@ -34,7 +38,7 @@ public class ChatController {
                     content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))})
     })
     public ResponseEntity<CommonResponseDto<ChatRoomCreateResponseDto>> createChatRoom(
-            @RequestBody ChatRoomCreateRequestDto requestDto) {
+           @Valid @RequestBody ChatRoomCreateRequestDto requestDto) {
 
             ChatRoomCreateResponseDto responseDto = chatRoomService.createChatRoom(requestDto);
 
@@ -50,8 +54,10 @@ public class ChatController {
                     content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))})
     })
     public ResponseEntity<CommonResponseDto<ChatRoomJoinResponseDto>> joinChatRoom(
-            @PathVariable String channelId,
-            @RequestBody ChatRoomJoinRequestDto chatRoomJoinRequestDto
+            @PathVariable("channelId")
+            @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    message = "Invalid UUID format") String channelId,
+            @Valid @RequestBody ChatRoomJoinRequestDto chatRoomJoinRequestDto
             ) {
 
         ChatRoomJoinResponseDto responseDto = chatRoomService.joinChatRoom(channelId,chatRoomJoinRequestDto);
