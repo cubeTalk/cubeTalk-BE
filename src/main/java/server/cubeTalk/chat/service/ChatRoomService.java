@@ -58,7 +58,7 @@ public class ChatRoomService {
         String memberId = UUID.randomUUID().toString();
 
         ChatRoom chatRoom = chatRoomRepository.findByChannelId(channelId)
-                .orElseThrow(() -> new RuntimeException("해당 채널을 찾을 수 없습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("해당 채널을 찾을 수 없습니다."));
 
         // 새 참가자를 리스트에 추가
         // !chatRoom.getOwnerId().isEmpty() (비어있지않다면) -> 방장이 참가
