@@ -13,10 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import server.cubeTalk.chat.model.dto.ChatRoomCreateRequestDto;
-import server.cubeTalk.chat.model.dto.ChatRoomCreateResponseDto;
-import server.cubeTalk.chat.model.dto.ChatRoomJoinRequestDto;
-import server.cubeTalk.chat.model.dto.ChatRoomJoinResponseDto;
+import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.service.ChatRoomService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
@@ -63,6 +60,26 @@ public class ChatController {
         ChatRoomJoinResponseDto responseDto = chatRoomService.joinChatRoom(channelId,chatRoomJoinRequestDto);
 
         return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
+    }
+
+    @PatchMapping("/{id}/role/{memberId}")
+    @Operation(summary = "팀변경 API", description = "팀변경시 사용하는 API")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+            content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 request dto , 변경하고자 하는 팀의 인원 제한 등",
+            content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto<ChatRoomTeamChangeResponseDto>> changeTeam(
+            @PathVariable("memberId")
+            @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    message = "Invalid UUID format") String memberId,
+            @PathVariable("id") String id,
+            @Valid @RequestBody ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
+
+        ChatRoomTeamChangeResponseDto responseDto = chatRoomService.changeTeam(id,memberId,chatRoomTeamChangeRequestDto);
+
+        return new ResponseEntity<>(CommonResponseDto.success(responseDto),HttpStatus.OK);
     }
 
 

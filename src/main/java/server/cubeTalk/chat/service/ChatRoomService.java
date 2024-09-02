@@ -3,10 +3,7 @@ package server.cubeTalk.chat.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import server.cubeTalk.chat.model.dto.ChatRoomCreateRequestDto;
-import server.cubeTalk.chat.model.dto.ChatRoomCreateResponseDto;
-import server.cubeTalk.chat.model.dto.ChatRoomJoinRequestDto;
-import server.cubeTalk.chat.model.dto.ChatRoomJoinResponseDto;
+import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.Participant;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
@@ -18,6 +15,7 @@ import server.cubeTalk.member.repository.MemberRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -135,5 +133,98 @@ public class ChatRoomService {
     /* 중복 닉네임 검증 */
     public boolean validateNickName(String nickName) {
         return !memberRepository.existsByNickName(nickName); // 존재하면 false 반환
+    }
+
+    /* 팀 변경 */
+    public ChatRoomTeamChangeResponseDto changeTeam(String id, String memberId, ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
+        // 해당팀의 포지션의 max 가 찬 경우에는 변경불가
+        // 해당 메인 채팅방의 - 서브채팅방 변경, 멤버의 포지션 변경
+        // 해당 participants 의 role 변경
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
+
+        /* 변경하려는 팀의 인원의 가득 찬 경우 */
+        String role = chatRoomTeamChangeRequestDto.getRole();
+
+        long roleCount = chatRoom.getParticipants().stream()
+                .filter(participant -> role.equals(participant.getRole()))
+                .count();
+
+        if (role.equals("찬성") || role.equals("반대")) {
+            if (roleCount >= chatRoom.getMaxParticipants() / 2) {
+                throw new IllegalArgumentException("해당 팀의 인원이 꽉 찼기 때문에 변경할 수 없습니다.");
+            }
+        } else if (role.equals("관전")) {
+            if (roleCount >= 4 ) {
+                throw new IllegalArgumentException("해당 팀의 인원이 꽉 찼기 때문에 변경할 수 없습니다.");
+            }
+        }
+
+        List<Participant> changeParticipant = chatRoom.getParticipants().stream().map(
+                participant -> {
+                    if (participant.getMemberId().equals(memberId)) {
+                        return Participant.builder()
+                                .memberId(memberId)
+                                .role(chatRoomTeamChangeRequestDto.getRole())
+                                .status(participant.getStatus())
+                                .build();
+                    }
+                    return participant;
+                }
+        ).toList();
+
+        String originRole = chatRoom.getParticipants().stream()
+                .filter(participant -> participant.getMemberId().equals(memberId))
+                .map(Participant::getRole)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("해당 멤버 ID를 찾을 수 없습니다."));
+
+        ChatRoom updatedChatRoom = chatRoom.toBuilder()
+                .participants(changeParticipant)
+                .build();
+
+        boolean  isSubChannelIdFound = false;
+        for (SubChatRoom subChatRoom :chatRoom.getSubChatRooms()) {
+            if (subChatRoom.getSubChannelId().equals(chatRoomTeamChangeRequestDto.getSubChannelId()) && subChatRoom.getType().equals(originRole)) {
+                isSubChannelIdFound = true;
+                subChatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(memberId));
+                break;
+            }
+        }
+
+        if (!isSubChannelIdFound) throw new IllegalArgumentException("현재 변경하고자 하는 역할과, 변경 전 subChannel 요청이 달라 처리할 수 없습니다. request 를 확인해주세요. ");
+        // 동일한 변경하고자하는 subchat type의 subchannelId를 반환, 해당 subchatRoom participants에 추가
+        // 만약 없는 경우 -> 해당 subChat이 생성되기 전 : 생성후 참여
+        String[] changeSubChannelId = new String[1];
+
+        chatRoom.getSubChatRooms().forEach(subChatRoom -> {
+            if (subChatRoom.getType().equals(chatRoomTeamChangeRequestDto.getRole())) {
+                changeParticipant.forEach(participant -> {
+                    if (participant.getMemberId().equals(memberId)) {
+                        changeSubChannelId[0] = subChatRoom.getSubChannelId();
+                        subChatRoom.getParticipants().add(participant);
+                    }
+                });
+            }
+        });
+
+        if (changeSubChannelId[0] == null) {
+            changeSubChannelId[0] = UUID.randomUUID().toString();
+            SubChatRoom newSubChatRoom = SubChatRoom.builder()
+                    .subChannelId(changeSubChannelId[0])
+                    .type(chatRoomTeamChangeRequestDto.getRole())
+                    .participants(new ArrayList<>())
+                    .build();
+            changeParticipant.forEach(participant -> {
+                if (participant.getMemberId().equals(memberId)) {
+                    newSubChatRoom.getParticipants().add(participant);
+                }
+            });
+            chatRoom.getSubChatRooms().add(newSubChatRoom);
+        }
+
+        chatRoomRepository.save(updatedChatRoom);
+
+        return new ChatRoomTeamChangeResponseDto(id,chatRoom.getChannelId(), changeSubChannelId[0]);
     }
 }
