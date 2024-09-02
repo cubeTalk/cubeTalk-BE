@@ -30,13 +30,21 @@ repositories {
 dependencies {
 //	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'junit:junit:4.13.1'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	annotationProcessor "jakarta.persistence:jakarta.persistence-api"
+	/* MongoDB */
+	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
 
+	/* websocket */
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'com.google.code.gson:gson:2.8.9'
+
+	/* 유효성 검증 */
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
 	/* RabbitMQ */
 	implementation 'org.springframework.boot:spring-boot-starter-amqp'
@@ -44,6 +52,7 @@ dependencies {
 
 	/* Swagger */
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2'
+
 
 }
 

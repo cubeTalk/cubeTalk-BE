@@ -9,6 +9,8 @@ import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
 import server.cubeTalk.chat.model.entity.Message;
 
+import java.time.LocalDateTime;
+
 @Controller
 @RequiredArgsConstructor
 public class MessageController {
@@ -16,13 +18,23 @@ public class MessageController {
     private final SimpMessageSendingOperations simpMessageSendingOperations;
 
     /*
-      /pub/hello 메세지 발행
+      /pub/message 메세지 발행
       /topic/{channelId} 구독
      */
 
-    @MessageMapping("/hello")
+    @MessageMapping("/message")
     public  void newUser(@Payload Message message, SimpMessageHeaderAccessor headerAccessor) {
         headerAccessor.getSessionAttributes().put("username", message.getSender());
-        simpMessageSendingOperations.convertAndSend("/topic/" + message.getChannelId(), message);
+
+        Message processedMessage = Message.builder()
+                .type(message.getType())
+                .sender(message.getSender())
+                .channelId(message.getChannelId())
+                .data(message.getData())
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        simpMessageSendingOperations.convertAndSend("/topic/" + processedMessage.getChannelId(), processedMessage);
+
     }
 }
