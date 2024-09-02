@@ -63,7 +63,7 @@ public class ChatController {
     }
 
     @PatchMapping("/{id}/role/{memberId}")
-    @Operation(summary = "팀변경 API", description = "팀변경시 사용하는 API")
+    @Operation(summary = "팀변경 API", description = "팀변경시 사용하는 API " + "원래 subChannelID 구독해제 및 response 값인 subChannelID 으로 재구독 부탁")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "success",
             content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
