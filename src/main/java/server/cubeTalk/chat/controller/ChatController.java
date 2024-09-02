@@ -46,7 +46,7 @@ public class ChatController {
     }
 
     @PostMapping("/{channelId}/participants")
-    @Operation(summary = "채팅방 참가 API", description = "채팅방 참가시 사용하는 API")
+    @Operation(summary = "채팅방 참가 API", description = "채팅방 참가시 사용하는 API " + "channelId, subChannelId 로 소켓연결 후 구독시 헤더에 변수명(username)으로 닉네임담아서 요청해주세요 ")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "success",
             content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
@@ -64,6 +64,8 @@ public class ChatController {
 
         return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
     }
+
+
 
 
 
