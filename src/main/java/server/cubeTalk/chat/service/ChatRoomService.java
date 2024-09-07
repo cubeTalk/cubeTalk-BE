@@ -48,7 +48,7 @@ public class ChatRoomService {
         chatRoomRepository.save(chatRoom);
         memberRepository.save(member);
 
-    return new ChatRoomCreateResponseDto(channelId, chatRoom.getId());
+    return new ChatRoomCreateResponseDto(chatRoom.getId(),memberId);
     }
 
     public ChatRoomJoinResponseDto joinChatRoom(String channelId, ChatRoomJoinRequestDto chatRoomJoinRequestDto) {
