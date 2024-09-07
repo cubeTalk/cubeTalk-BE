@@ -62,6 +62,7 @@ public class ChatRoomService {
         // 최대 참가 인원 , 팀별 참가 인원에 대한 예외처리
         participantsValidate(chatRoom, chatRoomJoinRequestDto);
 
+
         // 새 참가자를 리스트에 추가
         // !chatRoom.getOwnerId().isEmpty() (비어있지않다면) -> 방장이 참가
         // 이후 dto.getOwnerId()랑 chatRoom.getOwnerId() 비교 후 같으면 원래 chatRoom.getOwnerId() 아니면, 예외(유효성검증실패) 처리
@@ -134,6 +135,7 @@ public class ChatRoomService {
         return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, channelId, subchannelId, nickName);
     }
 
+
     /* 중복 닉네임 검증 */
     public boolean validateNickName(String nickName) {
         return !memberRepository.existsByNickName(nickName); // 존재하면 false 반환
@@ -151,8 +153,8 @@ public class ChatRoomService {
         String role = chatRoomTeamChangeRequestDto.getRole();
 
         if (!role.equals("찬성") && !role.equals("반대") && !role.equals("관전")) {
-            String errorMessage =  "내용에 '찬성 or 반대 or 관전'이 포함되어야 합니다.";
-            webSocketService.sendErrorMessage(chatRoom.getChannelId(),errorMessage);
+            String errorMessage = "내용에 '찬성 or 반대 or 관전'이 포함되어야 합니다.";
+            webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 
@@ -163,13 +165,13 @@ public class ChatRoomService {
         if (role.equals("찬성") || role.equals("반대")) {
             if (roleCount >= chatRoom.getMaxParticipants() / 2) {
                 String errorMessage = "해당 팀의 인원이 꽉 찼기 때문에 변경할 수 없습니다.";
-                webSocketService.sendErrorMessage(chatRoom.getChannelId(),errorMessage);
+                webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
                 throw new IllegalArgumentException(errorMessage);
             }
         } else if (role.equals("관전")) {
-            if (roleCount >= 4 ) {
+            if (roleCount >= 4) {
                 String errorMessage = "해당 팀의 인원이 꽉 찼기 때문에 변경할 수 없습니다.";
-                webSocketService.sendErrorMessage(chatRoom.getChannelId(),errorMessage);
+                webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
                 throw new IllegalArgumentException(errorMessage);
             }
         }
@@ -202,8 +204,8 @@ public class ChatRoomService {
                 .participants(changeParticipant)
                 .build();
 
-        boolean  isSubChannelIdFound = false;
-        for (SubChatRoom subChatRoom :chatRoom.getSubChatRooms()) {
+        boolean isSubChannelIdFound = false;
+        for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
             if (subChatRoom.getSubChannelId().equals(chatRoomTeamChangeRequestDto.getSubChannelId()) && subChatRoom.getType().equals(originRole)) {
                 isSubChannelIdFound = true;
                 subChatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(memberId));
@@ -214,7 +216,8 @@ public class ChatRoomService {
         if (!isSubChannelIdFound) {
             String errorMessage = "현재 변경하고자 하는 역할과, 변경 전 subChannel 요청이 달라 처리할 수 없습니다. request 를 확인해주세요. ";
             webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
-            throw new IllegalArgumentException(errorMessage);}
+            throw new IllegalArgumentException(errorMessage);
+        }
 
         String[] changeSubChannelId = new String[1];
 
@@ -223,7 +226,7 @@ public class ChatRoomService {
                 changeParticipant.forEach(participant -> {
                     if (participant.getMemberId().equals(memberId)) {
                         changeSubChannelId[0] = subChatRoom.getSubChannelId();
-                         subChatRoom.getParticipants().add(participant);
+                        subChatRoom.getParticipants().add(participant);
                     }
                 });
             }
@@ -246,8 +249,8 @@ public class ChatRoomService {
 
         chatRoomRepository.save(updatedChatRoom);
 
-        return new ChatRoomTeamChangeResponseDto(id,chatRoom.getChannelId(), changeSubChannelId[0]);
-
+        return new ChatRoomTeamChangeResponseDto(id, chatRoom.getChannelId(), changeSubChannelId[0]);
+    }
     /* 참가 인원 검증 */
     public void participantsValidate(ChatRoom chatRoom, ChatRoomJoinRequestDto dto) {
 
