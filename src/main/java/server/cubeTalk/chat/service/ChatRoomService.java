@@ -8,6 +8,7 @@ import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.Participant;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
+import server.cubeTalk.common.util.DateTimeUtils;
 import server.cubeTalk.common.util.RandomNicknameGenerator;
 import server.cubeTalk.member.model.entity.Member;
 import server.cubeTalk.member.repository.MemberRepository;
@@ -51,35 +52,35 @@ public class ChatRoomService {
     return new ChatRoomCreateResponseDto(chatRoom.getId(),memberId);
     }
 
-    public ChatRoomJoinResponseDto joinChatRoom(String channelId, ChatRoomJoinRequestDto chatRoomJoinRequestDto) {
+    public ChatRoomJoinResponseDto joinChatRoom(String id, ChatRoomJoinRequestDto chatRoomJoinRequestDto) {
 
         String subchannelId = null;
         String memberId = UUID.randomUUID().toString();
 
-        ChatRoom chatRoom = chatRoomRepository.findByChannelId(channelId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 채널을 찾을 수 없습니다."));
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
 
         // 최대 참가 인원 , 팀별 참가 인원에 대한 예외처리
         participantsValidate(chatRoom, chatRoomJoinRequestDto);
-
 
         // 새 참가자를 리스트에 추가
         // !chatRoom.getOwnerId().isEmpty() (비어있지않다면) -> 방장이 참가
         // 이후 dto.getOwnerId()랑 chatRoom.getOwnerId() 비교 후 같으면 원래 chatRoom.getOwnerId() 아니면, 예외(유효성검증실패) 처리
         String enterMember;
 
-        if (!chatRoomJoinRequestDto.getOwnerId().isEmpty()) {
-            if (!chatRoom.getOwnerId().isEmpty() && chatRoom.getOwnerId().equals(chatRoomJoinRequestDto.getOwnerId())) {
+        if (chatRoomJoinRequestDto.getOwnerId().isPresent()) {
+            if (chatRoom.getOwnerId() != null && chatRoom.getOwnerId().equals(chatRoomJoinRequestDto.getOwnerId().get())) {
                 enterMember = chatRoom.getOwnerId();
-            } else {
+            }else {
                 throw new IllegalArgumentException("유효하지 않은 (ownerId) 방장 정보입니다.");
             }
+
         } else {
             enterMember = memberId;
         }
 
         String nickName;
-        if (chatRoomJoinRequestDto.getNickName().isEmpty()) {
+        if (chatRoomJoinRequestDto.getNickName() == null) {
             nickName = RandomNicknameGenerator.generateNickname();
         } else {
             if (validateNickName(chatRoomJoinRequestDto.getNickName())) {
@@ -132,7 +133,7 @@ public class ChatRoomService {
 
         chatRoomRepository.save(chatRoom);
 
-        return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, channelId, subchannelId, nickName);
+        return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName, DateTimeUtils.nowFromZone());
     }
 
 
@@ -267,6 +268,7 @@ public class ChatRoomService {
                 .filter(participant -> currSupportToCnt.equals(participant.getRole()))
                 .count();
 
+
         long oppsiteCount = chatRoom.getParticipants().stream()
                 .filter(participant -> currOppositeToCnt.equals(participant.getRole()))
                 .count();
@@ -275,14 +277,16 @@ public class ChatRoomService {
                 .filter(participant -> currSpectatorToCnt.equals(participant.getRole()))
                 .count();
 
-        if (supportCount >= (chatRoom.getMaxParticipants() / 2) && dto.getRole().equals(currSupportToCnt)) {
-            throw new IllegalArgumentException("현재 찬성 인원이 꽉 찼습니다.");
-        }
-        if (oppsiteCount >= (chatRoom.getMaxParticipants() / 2) && dto.getRole().equals(currOppositeToCnt)) {
-            throw new IllegalArgumentException("현재 반대 인원이 꽉 찼습니다.");
-        }
-        if (spectatorCount >= 4 && dto.getRole().equals(currSpectatorToCnt)) {
-            throw new IllegalArgumentException("현재 관전 인원이 꽉 찼습니다.");
+        if ( (supportCount != 0 || oppsiteCount != 0 || spectatorCount != 0) && chatRoom.getMaxParticipants() != 0) {
+            if (supportCount >= (chatRoom.getMaxParticipants() / 2) && dto.getRole().equals(currSupportToCnt)) {
+                throw new IllegalArgumentException("현재 찬성 인원이 꽉 찼습니다.");
+            }
+            if (oppsiteCount >= (chatRoom.getMaxParticipants() / 2) && dto.getRole().equals(currOppositeToCnt)) {
+                throw new IllegalArgumentException("현재 반대 인원이 꽉 찼습니다.");
+            }
+            if (spectatorCount >= 4 && dto.getRole().equals(currSpectatorToCnt)) {
+                throw new IllegalArgumentException("현재 관전 인원이 꽉 찼습니다.");
+            }
         }
 
     }
