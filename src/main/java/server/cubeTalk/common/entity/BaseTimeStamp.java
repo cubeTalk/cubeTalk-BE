@@ -1,21 +1,22 @@
 package server.cubeTalk.common.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.PreUpdate;
+import lombok.Getter;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
-import java.time.LocalDateTime;
 
+import java.time.OffsetDateTime;
 
 @MappedSuperclass
-public class BaseTimeStamp {
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime createdAt;
+@Getter
+public abstract class BaseTimeStamp {
+
+    @CreatedDate
+    private OffsetDateTime createdAt;
 
     @LastModifiedDate
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime updatedAt;
-
+    private OffsetDateTime updatedAt;
 
 }
+
