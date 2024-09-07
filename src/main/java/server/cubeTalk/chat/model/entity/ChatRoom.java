@@ -12,7 +12,7 @@ import server.cubeTalk.common.entity.BaseTimeStamp;
 import java.util.ArrayList;
 import java.util.List;
 
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter

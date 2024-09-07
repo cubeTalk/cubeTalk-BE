@@ -10,6 +10,8 @@ services:
       - "${MONGO_PORT}:${MONGO_PORT}"
     volumes:
       - db-data:/mongo
+      - ~/.ssh/mongodb.key:/etc/mongodb.key
+    command: mongod --replSet rs0 --keyFile /etc/mongodb.key --bind_ip_all
 
   app1:
     image: cubetalk-server:1.0
