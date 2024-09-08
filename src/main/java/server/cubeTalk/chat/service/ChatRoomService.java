@@ -3,11 +3,13 @@ package server.cubeTalk.chat.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.Participant;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
+import server.cubeTalk.common.dto.CommonResponseDto;
 import server.cubeTalk.common.util.DateTimeUtils;
 import server.cubeTalk.common.util.RandomNicknameGenerator;
 import server.cubeTalk.member.model.entity.Member;
@@ -51,6 +53,7 @@ public class ChatRoomService {
 
     return new ChatRoomCreateResponseDto(chatRoom.getId(),memberId);
     }
+
 
     public ChatRoomJoinResponseDto joinChatRoom(String id, ChatRoomJoinRequestDto chatRoomJoinRequestDto) {
 
@@ -251,6 +254,8 @@ public class ChatRoomService {
 
         return new ChatRoomTeamChangeResponseDto(id, chatRoom.getChannelId(), changeSubChannelId[0]);
     }
+
+
     /* 참가 인원 검증 */
     public void participantsValidate(ChatRoom chatRoom, ChatRoomJoinRequestDto dto) {
 
@@ -298,4 +303,109 @@ public class ChatRoomService {
         }
 
     }
+
+
+    /* 구독 실패시 롤백 처리 */
+    @Transactional
+    public String subscriptionFailed(String id, ChatRoomSubscriptionFailureDto ChatRoomSubscriptionFailureDto){
+        final String ENTER_FALIED = "참가실패";
+        final String TEAM_CHANGE_FALIED = "변경실패";
+
+        String memberId = ChatRoomSubscriptionFailureDto.getMemberId();
+        String originRole = ChatRoomSubscriptionFailureDto.getOriginRole();
+
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(()-> new IllegalArgumentException("해당채팅방이 존재하지 않습니다."));
+
+        /* 유효성 검증 */
+        boolean exists = chatRoom.getParticipants().stream()
+                .anyMatch(participant -> participant.getMemberId().equals(memberId));
+
+        if (!exists)
+            throw new IllegalArgumentException("해당 memberId가 참가자 목록에 없습니다.");
+
+        try {
+            Participant participant = chatRoom.getParticipants().stream()
+                    .filter(p -> p.getMemberId().equals(memberId))  // memberId로 참가자 필터링
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("롤백할 해당 참가자가 없습니다. 서버코드 확인"));
+            /* 참가 실패시 롤백 처리 */
+            if (ChatRoomSubscriptionFailureDto.getType().equals(ENTER_FALIED)) {
+                validateRole(participant.getRole(), originRole, "참가자의 역할이 변경하려던 역할과 일치하지 않습니다.");
+                rollbackJoin(chatRoom, memberId, originRole);
+            }   else if (ChatRoomSubscriptionFailureDto.getType().equals(TEAM_CHANGE_FALIED)) {   /* 팀 변경 실패시 롤백 처리 */
+                String newRole = ChatRoomSubscriptionFailureDto.getNewRole()
+                        .orElseThrow(() -> new IllegalArgumentException("newRole 필드가 존재하지 않습니다."));
+                validateRole(participant.getRole(), newRole, "참가자의 역할이 변경하려던 역할과 일치하지 않습니다.");
+                rollbackTeamChange(chatRoom, memberId, originRole ,newRole);
+            }
+
+            /* 롤백 완료 메시지 반환 */
+            return "롤백완료";
+
+        } catch (Exception e) {
+            throw new RuntimeException("롤백실패 " + e.getMessage());
+        }
+
+    }
+
+    private void validateRole(String actualRole, String expectedRole, String errorMessage) {
+        if (!actualRole.equals(expectedRole)) {
+            throw new IllegalArgumentException(errorMessage);
+        }
+    }
+
+    /* 참가 실패 롤백 처리 */
+    @Transactional
+    public void rollbackJoin(ChatRoom chatRoom, String memberId, String originRole) {
+        memberRepository.deleteByMemberId(memberId);
+        chatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(memberId));
+        for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
+            if (subChatRoom.getType().equals(originRole)) {
+                subChatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(memberId));
+            }
+        }
+        // 멤버리포지토리도 삭제한 걸 반영해야함
+        chatRoomRepository.save(chatRoom);
+    }
+
+    /* 팀 변경 실패 롤백 처리 */
+    @Transactional
+    public void rollbackTeamChange(ChatRoom chatRoom, String memberId, String originRole ,String newRole) {
+
+        Participant infoParticipant = chatRoom.getParticipants().stream()
+                .filter(participant -> participant.getMemberId().equals(memberId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("해당 memberId의 참가자를 찾을 수 없습니다."));
+
+        List<Participant> participants = chatRoom.getParticipants();
+
+        for (int i = 0; i < participants.size(); i++) {
+            Participant participant = participants.get(i);
+            if (participant.getMemberId().equals(memberId)) {
+                // role과 status가 변경된 새로운 Participant 객체로 교체
+                Participant updatedParticipant = Participant.changeRole(participant, originRole, participant.getStatus());
+                participants.set(i, updatedParticipant);  // 기존 인덱스에 새 객체로 교체
+            }
+        }
+
+        for(SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
+            if (subChatRoom.getType().equals(newRole)){
+                subChatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(memberId));
+            }
+
+            if (subChatRoom.getType().equals(originRole)) {
+                Participant originParticipant = Participant.builder()
+                        .memberId(memberId)
+                        .role(originRole)
+                        .status(infoParticipant.getStatus())
+                        .build();
+                subChatRoom.getParticipants().add(originParticipant);
+            }
+        }
+
+        chatRoomRepository.save(chatRoom);
+    }
+
+
 }
