@@ -5,4 +5,5 @@ import server.cubeTalk.member.model.entity.Member;
 
 public interface MemberRepository extends MongoRepository<Member,String> {
     boolean existsByNickName(String nickName);
+    void deleteByMemberId(String memberId);
 }

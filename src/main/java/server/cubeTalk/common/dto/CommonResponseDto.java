@@ -3,9 +3,7 @@ package server.cubeTalk.common.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 
 @Data
 @AllArgsConstructor
@@ -23,8 +21,14 @@ public class CommonResponseDto<T>  {
     }
 
     public record CommonResponseErrorDto(int status, String message) {
-        public static CommonResponseErrorDto error(HttpStatus status, String message) {
-            return new CommonResponseErrorDto(status.value(), message);
+        public static CommonResponseErrorDto error(int status, String message) {
+            return new CommonResponseErrorDto(status, message);
+        }
+    }
+
+    public record CommonResponseSuccessDto(int status, String message) {
+        public static CommonResponseSuccessDto success(int status, String message) {
+            return new CommonResponseSuccessDto(status,message);
         }
     }
 

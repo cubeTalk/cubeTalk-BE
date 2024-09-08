@@ -17,8 +17,6 @@ import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.service.ChatRoomService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
-import java.util.UUID;
-
 @Tag(name = "채팅", description = "채팅 API")
 @Validated
 @RestController
@@ -81,6 +79,26 @@ public class ChatController {
 //
 //        return new ResponseEntity<>(CommonResponseDto.success(responseDto),HttpStatus.OK);
 //    }
+
+    @PostMapping("/{id}/subscription/error")
+    @Operation(summary = "구독실패 에러처리 API", description = "구독을 실패할 경우 롤백처리 후 응답해주는 API (응답오기 전까지 사용자에게 재시도 요청반환)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+            content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseSuccessDto.class))}),
+            @ApiResponse(responseCode = "500", description = "fail",
+            content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto.CommonResponseSuccessDto> subscriptionFailed(
+            @PathVariable("id")
+            @Pattern(regexp = "^[a-fA-F0-9]{24}$",
+                    message = "Invalid UUID format") String id,
+            @Valid @RequestBody ChatRoomSubscriptionFailureDto chatRoomSubscriptionFailureDto
+    ) {
+
+        String message = chatRoomService.subscriptionFailed(id, chatRoomSubscriptionFailureDto);
+
+        return new ResponseEntity<>(CommonResponseDto.CommonResponseSuccessDto.success(HttpStatus.OK.value(), message),HttpStatus.OK);
+    }
 
 
 
