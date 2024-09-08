@@ -408,4 +408,24 @@ public class ChatRoomService {
     }
 
 
+    /* 토론 개요 수정 */
+    public String modifyDescription(String id, ChatRoomModifyDescriptionRequestDto chatRoomModifyDescriptionRequestDto) {
+
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(()->new IllegalArgumentException("해당채팅방을 찾을 수 없습니다."));
+
+        String ownerId = chatRoomModifyDescriptionRequestDto.getOwnerId();
+        String modifyDescription = chatRoomModifyDescriptionRequestDto.getDescription();
+
+        if (!chatRoom.getOwnerId().equals(ownerId)) throw new IllegalArgumentException("방장이 아닙니다. 방장만 채팅방 설명을 수정할 수 있습니다.");
+
+        ChatRoom updatedChatRoom = chatRoom.toBuilder()
+                .description(modifyDescription)
+                .build();
+
+        chatRoomRepository.save(updatedChatRoom);
+
+        return "요청처리에 성공했습니다.";
+    }
+
 }
