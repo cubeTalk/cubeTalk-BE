@@ -428,4 +428,11 @@ public class ChatRoomService {
         return "요청처리에 성공했습니다.";
     }
 
+    /* home 버튼 get 요청 */
+    public ChatRoomDescriptionResponseDto getDescription(String id) {
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(()->new IllegalArgumentException("해당채팅방을 찾을 수 없습니다."));
+        return new ChatRoomDescriptionResponseDto(chatRoom.getDescription());
+    }
+
 }
