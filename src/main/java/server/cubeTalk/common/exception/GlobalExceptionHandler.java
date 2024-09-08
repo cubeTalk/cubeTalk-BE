@@ -16,14 +16,14 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<CommonResponseDto<String>> handleIllegalArgumentException(IllegalArgumentException ex) {
-        CommonResponseDto<String> response = new CommonResponseDto<>(400, ex.getMessage(), null);
+    public ResponseEntity<CommonResponseDto.CommonResponseErrorDto> handleIllegalArgumentException(IllegalArgumentException ex) {
+        CommonResponseDto.CommonResponseErrorDto response = CommonResponseDto.CommonResponseErrorDto.error(400, ex.getMessage());
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<CommonResponseDto<String>> handleRuntimeException(RuntimeException ex) {
-        CommonResponseDto<String> response = new CommonResponseDto<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage(), null);
+    public ResponseEntity<CommonResponseDto.CommonResponseErrorDto> handleRuntimeException(RuntimeException ex) {
+        CommonResponseDto.CommonResponseErrorDto response = CommonResponseDto.CommonResponseErrorDto.error(HttpStatus.INTERNAL_SERVER_ERROR.value(),ex.getMessage());
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
