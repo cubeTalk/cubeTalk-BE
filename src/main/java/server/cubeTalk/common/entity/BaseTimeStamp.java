@@ -6,6 +6,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @MappedSuperclass
@@ -13,10 +14,10 @@ import java.time.OffsetDateTime;
 public abstract class BaseTimeStamp {
 
     @CreatedDate
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
     @LastModifiedDate
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
 }
 
