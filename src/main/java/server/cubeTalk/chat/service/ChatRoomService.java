@@ -151,6 +151,12 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
 
+        Participant searchParticipant = chatRoom.getParticipants().stream()
+                .filter(p -> p.getMemberId().equals(memberId))
+                .findFirst()
+                .orElseThrow(()->new IllegalArgumentException("해당 멤버를 찾을 수 없습니다."));
+
+        if (searchParticipant.getRole().equals(chatRoomTeamChangeRequestDto.getRole())) throw new IllegalArgumentException("이미 해당팀에 속해있습니다.");
         /* 변경하려는 팀의 인원의 가득 찬 경우 */
         String role = chatRoomTeamChangeRequestDto.getRole();
 
