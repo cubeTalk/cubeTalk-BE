@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class ChatRoomCreateRequestDto {
     @NotEmpty(message = "제목은 필수입니다.")
