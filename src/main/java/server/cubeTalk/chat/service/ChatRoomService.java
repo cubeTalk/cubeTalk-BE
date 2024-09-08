@@ -149,15 +149,19 @@ public class ChatRoomService {
     public ChatRoomTeamChangeResponseDto changeTeam(String id, String memberId, ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(id)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
 
+        Participant searchParticipant = chatRoom.getParticipants().stream()
+                .filter(p -> p.getMemberId().equals(memberId))
+                .findFirst()
+                .orElseThrow(()->new IllegalArgumentException("해당 멤버를 찾을 수 없습니다."));
+
+        if (searchParticipant.getRole().equals(chatRoomTeamChangeRequestDto.getRole())) throw new IllegalArgumentException("이미 해당팀에 속해있습니다.");
         /* 변경하려는 팀의 인원의 가득 찬 경우 */
         String role = chatRoomTeamChangeRequestDto.getRole();
 
         if (!role.equals("찬성") && !role.equals("반대") && !role.equals("관전")) {
             String errorMessage = "내용에 '찬성 or 반대 or 관전'이 포함되어야 합니다.";
-            webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 
@@ -168,13 +172,11 @@ public class ChatRoomService {
         if (role.equals("찬성") || role.equals("반대")) {
             if (roleCount >= chatRoom.getMaxParticipants() / 2) {
                 String errorMessage = "해당 팀의 인원이 꽉 찼기 때문에 변경할 수 없습니다.";
-                webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
                 throw new IllegalArgumentException(errorMessage);
             }
         } else if (role.equals("관전")) {
             if (roleCount >= 4) {
                 String errorMessage = "해당 팀의 인원이 꽉 찼기 때문에 변경할 수 없습니다.";
-                webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
                 throw new IllegalArgumentException(errorMessage);
             }
         }
@@ -199,7 +201,6 @@ public class ChatRoomService {
                 .findFirst()
                 .orElseThrow(() -> {
                     String errorMessage = "해당 멤버 ID를 찾을 수 없습니다.";
-                    webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
                     return new IllegalArgumentException(errorMessage);
                 });
 
@@ -218,7 +219,6 @@ public class ChatRoomService {
 
         if (!isSubChannelIdFound) {
             String errorMessage = "현재 변경하고자 하는 역할과, 변경 전 subChannel 요청이 달라 처리할 수 없습니다. request 를 확인해주세요. ";
-            webSocketService.sendErrorMessage(chatRoom.getChannelId(), errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 
@@ -252,7 +252,7 @@ public class ChatRoomService {
 
         chatRoomRepository.save(updatedChatRoom);
 
-        return new ChatRoomTeamChangeResponseDto(id, chatRoom.getChannelId(), changeSubChannelId[0]);
+        return new ChatRoomTeamChangeResponseDto(id, chatRoom.getChannelId(), changeSubChannelId[0],chatRoomTeamChangeRequestDto.getSubChannelId());
     }
 
 

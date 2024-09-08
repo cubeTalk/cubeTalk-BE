@@ -43,14 +43,13 @@ public class MessageController {
 
     }
 
-    @MessageMapping("/changeTeam")
-    public void changeTeam(ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
-
-        ChatRoomTeamChangeResponseDto chatRoomTeamChangeResponseDto = chatRoomService.changeTeam(chatRoomTeamChangeRequestDto.getId(), chatRoomTeamChangeRequestDto.getMemberId(),chatRoomTeamChangeRequestDto);
-
-        simpMessageSendingOperations.convertAndSend("/topic/" + chatRoomTeamChangeResponseDto.getChannelId(), chatRoomTeamChangeResponseDto);
-
-
-    }
+//    @MessageMapping("/changeTeam")
+//    public void changeTeam(ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
+//
+//        ChatRoomTeamChangeResponseDto chatRoomTeamChangeResponseDto = chatRoomService.changeTeam(chatRoomTeamChangeRequestDto.getId(), chatRoomTeamChangeRequestDto.getMemberId(),chatRoomTeamChangeRequestDto);
+//
+//        simpMessageSendingOperations.convertAndSend("/topic/" + chatRoomTeamChangeResponseDto.getChannelId(), chatRoomTeamChangeResponseDto);
+//
+//    }
 
 }

@@ -10,6 +10,8 @@ public class ChatRoomTeamChangeResponseDto {
 
     private String id;
     private String ChannelId;
-    private String subChannelId;
+    private String newSubChannelId;
+    private String previousSubChannelId;
+
 
 }
