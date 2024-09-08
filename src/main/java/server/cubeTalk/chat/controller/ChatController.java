@@ -60,25 +60,25 @@ public class ChatController {
         return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
     }
 
-//    @PatchMapping("/{id}/role/{memberId}")
-//    @Operation(summary = "팀변경 API", description = "팀변경시 사용하는 API " + "원래 subChannelID 구독해제 및 response 값인 subChannelID 으로 재구독 부탁")
-//    @ApiResponses(value = {
-//            @ApiResponse(responseCode = "200", description = "success",
-//            content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
-//            @ApiResponse(responseCode = "400", description = "유효하지 않은 request dto , 변경하고자 하는 팀의 인원 제한 등",
-//            content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))})
-//    })
-//    public ResponseEntity<CommonResponseDto<ChatRoomTeamChangeResponseDto>> changeTeam(
-//            @PathVariable("memberId")
-//            @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-//                    message = "Invalid UUID format") String memberId,
-//            @PathVariable("id") String id,
-//            @Valid @RequestBody ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
-//
-//        ChatRoomTeamChangeResponseDto responseDto = chatRoomService.changeTeam(id,memberId,chatRoomTeamChangeRequestDto);
-//
-//        return new ResponseEntity<>(CommonResponseDto.success(responseDto),HttpStatus.OK);
-//    }
+    @PatchMapping("/{id}/role/{memberId}")
+    @Operation(summary = "팀변경 API", description = "팀변경시 사용하는 API " + "원래 subChannelID 구독해제 및 response 값인 subChannelID 으로 재구독 부탁")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+            content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 request dto , 변경하고자 하는 팀의 인원 제한 등",
+            content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto<ChatRoomTeamChangeResponseDto>> changeTeam(
+            @PathVariable("memberId")
+            @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    message = "Invalid UUID format") String memberId,
+            @PathVariable("id") String id,
+            @Valid @RequestBody ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
+
+        ChatRoomTeamChangeResponseDto responseDto = chatRoomService.changeTeam(id,memberId,chatRoomTeamChangeRequestDto);
+
+        return new ResponseEntity<>(CommonResponseDto.success(responseDto),HttpStatus.OK);
+    }
 
     @PostMapping("/{id}/subscription/error")
     @Operation(summary = "구독실패 에러처리 API", description = "구독을 실패할 경우 롤백처리 후 응답해주는 API (응답오기 전까지 사용자에게 재시도 요청반환)")
