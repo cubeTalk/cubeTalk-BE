@@ -4,13 +4,13 @@ services:
     image: mongodb/mongodb-community-server:5.0.17-ubuntu2004
     container_name: mongo_new
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME} # 기본 관리자 계정의 사용자 이름
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}  # 기본 관리자 계정의 비밀번호
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME} # 기본 관리자 계정의 사용자 이름
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}  # 기본 관리자 계정의 비밀번호
     ports:
       - "${MONGO_PORT}:${MONGO_PORT}"
     volumes:
       - db-data:/mongo
-      - ~/.ssh/mongodb.key:/etc/mongodb.key
+      - /Users/dabin/mongodb.key:/etc/mongodb.key
     command: mongod --replSet rs0 --keyFile /etc/mongodb.key --bind_ip_all
 
   rabbitmq:
