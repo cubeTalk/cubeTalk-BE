@@ -11,7 +11,7 @@ services:
     volumes:
       - db-data:/mongo
       - ${MONGO_KEY_FILE}:/etc/mongodb.key
-    command: mongod --replSet rs0 --keyFile /etc/mongodb.key --bind_ip_all
+    command: 'mongod --replSet myReplicaSet --keyFile /etc/mongodb.key --bind_ip_all'
 
   rabbitmq:
     image: rabbitmq:3-management
