@@ -25,6 +25,7 @@ services:
       - "15672:15672"  # 관리 UI 포트
 
   app1:
+    build: .
     image: cubetalk-server:1.0
     container_name: spring-app1-container
     ports:
