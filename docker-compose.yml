@@ -13,6 +13,17 @@ services:
       - ~/.ssh/mongodb.key:/etc/mongodb.key
     command: mongod --replSet rs0 --keyFile /etc/mongodb.key --bind_ip_all
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    ports:
+      - "5672:5672"  # AMQP 포트
+      - "61613:61613"  # STOMP 포트
+      - "15672:15672"  # 관리 UI 포트
+
   app1:
     image: cubetalk-server:1.0
     container_name: spring-app1-container
@@ -20,6 +31,7 @@ services:
       - "8081:8080"
     depends_on:
       - mongodb
+      - rabbitmq
     environment:
       SPRING_DATA_MONGODB_URI: mongodb+srv://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}/${MONGO_DB_NAME}?retryWrites=true&w=majority
 
