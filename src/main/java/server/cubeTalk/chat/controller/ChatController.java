@@ -137,4 +137,23 @@ public class ChatController {
     }
 
 
+    @GetMapping("/{id}/participants")
+    @Operation(summary = "참가자 인원 수 GET 요청하는 API", description = "현재 채팅방에 참여중인 인원 수를 반환합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
+            @ApiResponse(responseCode = "400", description = "fail",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto<ChatRoomParticipantsCountDto>> getParticipantCounts(
+            @PathVariable("id")
+            @Pattern(regexp = "^[a-fA-F0-9]{24}$",
+                    message = "Invalid UUID format") String id
+    ) {
+
+        ChatRoomParticipantsCountDto responseDto = chatRoomService.getParticipantCounts(id);
+        return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
+    }
+
+
 }
