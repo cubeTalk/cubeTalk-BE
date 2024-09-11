@@ -155,5 +155,23 @@ public class ChatController {
         return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "채팅방 정보 GET 요청하는 API", description = "채팅방 정보들을 반환합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
+            @ApiResponse(responseCode = "400", description = "fail",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto<ChatRoomInfoResponseDto>> getChatRoomInfo(
+            @PathVariable("id")
+            @Pattern(regexp = "^[a-fA-F0-9]{24}$",
+                    message = "Invalid UUID format") String id
+            ) {
+
+        ChatRoomInfoResponseDto responseDto = chatRoomService.getChatRoomInfo(id);
+
+        return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
+    }
 
 }
