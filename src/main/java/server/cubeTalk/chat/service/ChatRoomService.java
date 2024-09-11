@@ -456,4 +456,13 @@ public class ChatRoomService {
         return new ChatRoomParticipantsCountDto(chatRoom.getMaxParticipants(),chatRoom.getParticipants().size(),supportCount,oppositeCount,spectatorCount);
     }
 
+    /* 채팅방 정보 */
+    public ChatRoomInfoResponseDto getChatRoomInfo(String id) {
+
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(()->new IllegalArgumentException("해당채팅방을 찾을 수 없습니다."));
+
+        return ChatRoomInfoResponseDto.fromChatRoom(chatRoom);
+    }
+
 }
