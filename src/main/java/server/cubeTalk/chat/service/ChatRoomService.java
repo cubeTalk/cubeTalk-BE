@@ -444,20 +444,14 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(()->new IllegalArgumentException("해당채팅방을 찾을 수 없습니다."));
 
-        int supportCount = chatRoom.getParticipants().stream().filter(participant ->
-                participant.getRole().equals(SUPPORT))
-                .toList()
-                .size();
+        int supportCount = (int) chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals(SUPPORT))
+                .count();
 
-        int oppositeCount = chatRoom.getParticipants().stream().filter(participant ->
-                        participant.getRole().equals(OPPOSITE))
-                .toList()
-                .size();
+        int oppositeCount = (int) chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals(OPPOSITE))
+                .count();
 
-        int spectatorCount = chatRoom.getParticipants().stream().filter(participant ->
-                        participant.getRole().equals(SPECTATOR))
-                .toList()
-                .size();
+        int spectatorCount = (int) chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals(SPECTATOR))
+                .count();
 
         return new ChatRoomParticipantsCountDto(chatRoom.getMaxParticipants(),chatRoom.getParticipants().size(),supportCount,oppositeCount,spectatorCount);
     }
