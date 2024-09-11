@@ -435,4 +435,31 @@ public class ChatRoomService {
         return new ChatRoomDescriptionResponseDto(chatRoom.getDescription());
     }
 
+    /* 참여자 인원 수 */
+    public ChatRoomParticipantsCountDto getParticipantCounts(String id) {
+        final String SUPPORT = "찬성";
+        final String OPPOSITE = "반대";
+        final String SPECTATOR = "관전";
+
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(()->new IllegalArgumentException("해당채팅방을 찾을 수 없습니다."));
+
+        int supportCount = chatRoom.getParticipants().stream().filter(participant ->
+                participant.getRole().equals(SUPPORT))
+                .toList()
+                .size();
+
+        int oppositeCount = chatRoom.getParticipants().stream().filter(participant ->
+                        participant.getRole().equals(OPPOSITE))
+                .toList()
+                .size();
+
+        int spectatorCount = chatRoom.getParticipants().stream().filter(participant ->
+                        participant.getRole().equals(SPECTATOR))
+                .toList()
+                .size();
+
+        return new ChatRoomParticipantsCountDto(chatRoom.getMaxParticipants(),chatRoom.getParticipants().size(),supportCount,oppositeCount,spectatorCount);
+    }
+
 }
