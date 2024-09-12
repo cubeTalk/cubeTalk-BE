@@ -6,10 +6,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.model.entity.ChatRoom;
+import server.cubeTalk.chat.model.entity.DebateSettings;
 import server.cubeTalk.chat.model.entity.Participant;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
-import server.cubeTalk.common.dto.CommonResponseDto;
 import server.cubeTalk.common.util.DateTimeUtils;
 import server.cubeTalk.common.util.RandomNicknameGenerator;
 import server.cubeTalk.member.model.entity.Member;
@@ -18,7 +18,6 @@ import server.cubeTalk.member.repository.MemberRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +40,7 @@ public class ChatRoomService {
                 .maxParticipants(requestDto.getMaxParticipants())
                 .chatMode(requestDto.getChatMode())
                 .chatDuration(requestDto.getChatDuration())
+                .debateSettings(buildDebateSettings(requestDto))
                 .chatStatus("CREATE")
                 .build();
 
@@ -52,6 +52,24 @@ public class ChatRoomService {
         memberRepository.save(member);
 
     return new ChatRoomCreateResponseDto(chatRoom.getId(),memberId);
+    }
+
+    /* DebateSettings 빌드 메서드 */
+    private DebateSettings buildDebateSettings(ChatRoomCreateRequestDto requestDto) {
+        if ("찬반".equals(requestDto.getChatMode()) && requestDto.getDebateSettings().isPresent()) {
+            DebateSettingsRequest debateSettingsDto = requestDto.getDebateSettings().get();
+
+            // DebateSettings 빌드
+            return DebateSettings.builder()
+                    .positiveEntry(debateSettingsDto.getPositiveEntry())
+                    .negativeEntry(debateSettingsDto.getNegativeEntry())
+                    .positiveRebuttal(debateSettingsDto.getPositiveRebuttal())
+                    .negativeRebuttal(debateSettingsDto.getNegativeRebuttal())
+                    .votingTime(0.5)
+                    .build();
+        } else {
+            return null;
+        }
     }
 
 
@@ -429,10 +447,10 @@ public class ChatRoomService {
     }
 
     /* home 버튼 get 요청 */
-    public ChatRoomDescriptionResponseDto getDescription(String id) {
+    public ChatRoomHomeResponseDto getDescription(String id) {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(()->new IllegalArgumentException("해당채팅방을 찾을 수 없습니다."));
-        return new ChatRoomDescriptionResponseDto(chatRoom.getDescription());
+        return ChatRoomHomeResponseDto.fromChatRoom(chatRoom);
     }
 
     /* 참여자 인원 수 */
