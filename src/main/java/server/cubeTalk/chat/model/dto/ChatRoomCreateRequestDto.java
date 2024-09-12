@@ -20,7 +20,7 @@ public class ChatRoomCreateRequestDto {
     private int maxParticipants;
     @NotEmpty(message = "채팅방 모드는 필수 항목입니다.")
     private String chatMode;
-    private int chatDuration;
+    private Optional<Integer> chatDuration = Optional.empty();
     private Optional<DebateSettingsRequest> debateSettings = Optional.empty();
 
 }

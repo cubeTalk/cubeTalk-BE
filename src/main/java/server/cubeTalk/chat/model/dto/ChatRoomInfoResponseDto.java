@@ -22,7 +22,7 @@ public class ChatRoomInfoResponseDto {
     private String description;
     private String chatMode;
     private int maxParticipants;
-    private int chatDuration;
+    private Double chatDuration;
     private String ownerId;
     private String chatStatus;
     private DebateSettings debateSettings;  // 자유 모드가 아닐 때만 포함
