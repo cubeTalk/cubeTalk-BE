@@ -11,12 +11,12 @@ import server.cubeTalk.chat.model.entity.DebateSettings;
 @Builder
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ChatRoomDescriptionResponseDto {
+public class ChatRoomHomeResponseDto {
     private String description;
     private DebateSettings debateSettings;
-    
-    public static ChatRoomDescriptionResponseDto fromChatRoom(ChatRoom chatRoom) {
-        return ChatRoomDescriptionResponseDto.builder()
+
+    public static ChatRoomHomeResponseDto fromChatRoom(ChatRoom chatRoom) {
+        return ChatRoomHomeResponseDto.builder()
                 .description(chatRoom.getDescription())
                 .debateSettings(chatRoom.getChatMode().equals("자유") ? null : chatRoom.getDebateSettings())
                 .build();

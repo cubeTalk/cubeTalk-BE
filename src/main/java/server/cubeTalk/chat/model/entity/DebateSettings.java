@@ -1,14 +1,16 @@
 package server.cubeTalk.chat.model.entity;
 
 
+import lombok.Builder;
+import lombok.Getter;
 
-
-public class DabateSettings {
+@Builder
+@Getter
+public class DebateSettings {
     private int positiveEntry;
     private int negativeEntry;
     private int positiveRebuttal;
     private int negativeRebuttal;
-    private int votingTime;
-    private int chatDuration;
+    private Double votingTime;
 
 }
