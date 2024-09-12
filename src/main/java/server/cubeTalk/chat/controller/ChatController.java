@@ -174,4 +174,23 @@ public class ChatController {
         return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
     }
 
+    @PatchMapping("/{id}/settings")
+    @Operation(summary = "채팅방 설정 변경하는 API", description = "채팅 설정 변경을 요청하는 API")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseSuccessDto.class))}),
+            @ApiResponse(responseCode = "400", description = "fail",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto.CommonResponseSuccessDto> changeChatRoomSettings(
+            @PathVariable("id")
+            @Pattern(regexp = "^[a-fA-F0-9]{24}$",
+                    message = "Invalid UUID format") String id,
+            @Valid @RequestBody ChatRoomChangeSettingsRequestDto chatRoomChangeSettingsRequestDto
+    ) {
+        String message = chatRoomService.changeChatRoomSettings(id, chatRoomChangeSettingsRequestDto);
+
+        return new ResponseEntity<>(CommonResponseDto.CommonResponseSuccessDto.success(200, message), HttpStatus.OK);
+    }
+
 }
