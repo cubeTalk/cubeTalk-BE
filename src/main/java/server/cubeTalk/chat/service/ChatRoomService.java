@@ -500,4 +500,55 @@ public class ChatRoomService {
         return ChatRoomInfoResponseDto.fromChatRoom(chatRoom);
     }
 
+    /* 채팅방 설정 변경 */
+    public String changeChatRoomSettings(String id, ChatRoomChangeSettingsRequestDto chatRoomChangeSettingsRequestDto) {
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
+
+        if (!chatRoom.getOwnerId().equals(chatRoomChangeSettingsRequestDto.getOwnerId())) {
+            throw new IllegalArgumentException("채팅 설정은 방장만 변경이 가능합니다.");
+        }
+
+        // 찬반 모드일 때 참가자 수 검증
+        if ("찬반".equals(chatRoom.getChatMode())) {
+            int maxParticipants = chatRoomChangeSettingsRequestDto.getMaxParticipants();
+            if (maxParticipants % 2 != 0 ||( 0 < maxParticipants && maxParticipants < 6) ) {
+                throw new IllegalArgumentException("찬반토론인 경우, 참가자는 짝수이면서 최소 6명이상이어야 합니다.");
+            }
+
+            if (chatRoomChangeSettingsRequestDto.getDebateSettings().isEmpty()) {
+                throw new IllegalArgumentException("찬반 토론에서는 토론 설정이 필수입니다.");
+            }
+
+            DebateSettingsRequest debateSettings = chatRoomChangeSettingsRequestDto.getDebateSettings().get();
+            double totalChatDuration = debateSettings.getNegativeEntry() + debateSettings.getPositiveEntry()
+                    + debateSettings.getNegativeQuestioning() + debateSettings.getPositiveQuestioning()
+                    + debateSettings.getNegativeRebuttal() + debateSettings.getPositiveRebuttal();
+
+            // 채팅방의 토론 설정과 시간 업데이트
+            ChatRoom updatedChatRoom = chatRoom.toBuilder()
+                    .maxParticipants(maxParticipants)
+                    .chatDuration(totalChatDuration)
+                    .debateSettings(debateSettings.toEntity())  // DebateSettingsRequest -> DebateSettings 변환
+                    .build();
+            chatRoomRepository.save(updatedChatRoom);
+
+        } else {
+            // 자유 모드일 때
+            if (chatRoomChangeSettingsRequestDto.getChatDuration().isEmpty() ||chatRoomChangeSettingsRequestDto.getMaxParticipants() < 0) {
+                throw new IllegalArgumentException("자유 모드에서는 채팅 시간, 사용자 수(0명이상)(이)가 필수입니다.");
+            }
+
+
+            ChatRoom updatedChatRoom = chatRoom.toBuilder()
+                    .maxParticipants(chatRoomChangeSettingsRequestDto.getMaxParticipants())
+                    .chatDuration(chatRoomChangeSettingsRequestDto.getChatDuration().get())
+                    .build();
+            chatRoomRepository.save(updatedChatRoom);
+        }
+
+        return "요청처리에 성공했습니다";
+    }
+
+
 }
