@@ -5,10 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import server.cubeTalk.chat.model.entity.ChatRoom;
-import server.cubeTalk.chat.model.entity.DabateSettings;
+import server.cubeTalk.chat.model.entity.DebateSettings;
 import server.cubeTalk.chat.model.entity.Participant;
-import server.cubeTalk.common.entity.BaseTimeStamp;
-import server.cubeTalk.common.util.DateTimeUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,14 +18,14 @@ import java.util.List;
 public class ChatRoomInfoResponseDto {
     private String id;
     private String channelId;
-    private String title;
+    private String titale;
     private String description;
     private String chatMode;
     private int maxParticipants;
     private int chatDuration;
     private String ownerId;
     private String chatStatus;
-    private DabateSettings debateSettings;  // 자유 모드가 아닐 때만 포함
+    private DebateSettings debateSettings;  // 자유 모드가 아닐 때만 포함
     private List<Participant> participants;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
