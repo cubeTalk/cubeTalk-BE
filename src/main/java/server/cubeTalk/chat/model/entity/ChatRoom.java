@@ -29,7 +29,7 @@ public class ChatRoom extends BaseTimeStamp {
     private int chatDuration;
     private String ownerId; //member의 id를 참조
     private String chatStatus;
-    private DabateSettings debateSettings;
+    private DebateSettings debateSettings;
     private List<Participant> participants = new ArrayList<>(); // 참여자 목록
     private List<SubChatRoom> subChatRooms = new ArrayList<>(); // 서브 채팅방 목록
 

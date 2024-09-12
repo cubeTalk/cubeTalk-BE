@@ -18,7 +18,7 @@ import java.util.List;
 public class ChatRoomInfoResponseDto {
     private String id;
     private String channelId;
-    private String titale;
+    private String title;
     private String description;
     private String chatMode;
     private int maxParticipants;
