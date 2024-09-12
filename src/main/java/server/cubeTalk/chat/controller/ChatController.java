@@ -120,19 +120,19 @@ public class ChatController {
 
 
     @PatchMapping("/{id}/home")
-    @Operation(summary = "home 버튼 클릭시 발생하는 API", description = "토론 개요를 GET 요청하는 API")
+    @Operation(summary = "home 버튼 클릭시 발생하는 API", description = "home 버튼 GET 요청하는 API")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "success",
                     content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
             @ApiResponse(responseCode = "400", description = "fail",
                     content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
     })
-    public ResponseEntity<CommonResponseDto<ChatRoomDescriptionResponseDto>> getDescription(
+    public ResponseEntity<CommonResponseDto<ChatRoomHomeResponseDto>> getDescription(
             @PathVariable("id")
             @Pattern(regexp = "^[a-fA-F0-9]{24}$",
                     message = "Invalid UUID format") String id
     ) {
-        ChatRoomDescriptionResponseDto responseDto = chatRoomService.getDescription(id);
+        ChatRoomHomeResponseDto responseDto = chatRoomService.getDescription(id);
         return new ResponseEntity<>(CommonResponseDto.success(responseDto),HttpStatus.OK);
     }
 
