@@ -17,6 +17,9 @@ import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.service.ChatRoomService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+
 @Tag(name = "채팅", description = "채팅 API")
 @Validated
 @RestController
@@ -192,5 +195,27 @@ public class ChatController {
 
         return new ResponseEntity<>(CommonResponseDto.CommonResponseSuccessDto.success(200, message), HttpStatus.OK);
     }
+
+    @GetMapping("/{id}/messages")
+    @Operation(summary = "채팅방 이전 메시지 불러오는 API", description = "메인 채팅방 이전 메시지들을 불러와 이전 메시지 리스트를 반환")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
+            @ApiResponse(responseCode = "400", description = "fail",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto<ChatRoomBeforeMessagesResponseDto>> getBeforeMessages(
+            @RequestParam("channelId")
+            @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    message = "Invalid UUID format") String channelId,
+            @RequestParam("before")
+            ZonedDateTime before
+    ) {
+        ChatRoomBeforeMessagesResponseDto responseDto = chatRoomService.getBeforeMessages(channelId, before);
+
+        return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
+    }
+
+
 
 }

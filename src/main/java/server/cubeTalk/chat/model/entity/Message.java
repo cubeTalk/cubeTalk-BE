@@ -5,18 +5,25 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import server.cubeTalk.common.entity.BaseTimeStamp;
+
 import java.time.LocalDateTime;
 
 @Getter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Message {
+@Document(collection = "message")
+public class Message extends BaseTimeStamp {
+    @Id
+    private String id;
     private String type;
     private String sender;
     private String channelId;
-    private Object data;
-    private LocalDateTime timestamp;
+    private Object message;
+    private String replyToMessageId;
 
     public void setSender(String sender) {
         this.sender = sender;
