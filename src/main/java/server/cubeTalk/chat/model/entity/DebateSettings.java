@@ -11,6 +11,8 @@ public class DebateSettings {
     private int negativeEntry;
     private int positiveRebuttal;
     private int negativeRebuttal;
+    private int negativeQuestioning;
+    private int positiveQuestioning;
     private Double votingTime;
 
 }

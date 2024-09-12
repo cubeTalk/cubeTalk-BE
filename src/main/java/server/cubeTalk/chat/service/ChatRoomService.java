@@ -25,13 +25,18 @@ public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final MemberRepository memberRepository;
-    private final WebSocketService webSocketService;
 
+    /* 채팅방 생성 */
     public ChatRoomCreateResponseDto createChatRoom(ChatRoomCreateRequestDto requestDto) {
 
         String channelId = UUID.randomUUID().toString();
         String memberId = UUID.randomUUID().toString();
-
+        double totalChatDuration = 0.0;
+        if ("찬반".equals(requestDto.getChatMode()) && requestDto.getDebateSettings().isPresent()) {
+            DebateSettingsRequest debateSettingsDto = requestDto.getDebateSettings().get();
+            totalChatDuration = debateSettingsDto.getNegativeEntry() + debateSettingsDto.getPositiveEntry() + debateSettingsDto.getNegativeRebuttal() + debateSettingsDto.getPositiveRebuttal()
+                    + debateSettingsDto.getNegativeQuestioning() + debateSettingsDto.getPositiveQuestioning() + 0.5;
+        }
         ChatRoom chatRoom = ChatRoom.builder()
                 .channelId(channelId)
                 .ownerId(memberId)
@@ -39,7 +44,7 @@ public class ChatRoomService {
                 .description(requestDto.getDescription())
                 .maxParticipants(requestDto.getMaxParticipants())
                 .chatMode(requestDto.getChatMode())
-                .chatDuration(requestDto.getChatDuration())
+                .chatDuration(requestDto.getChatDuration().isPresent() && requestDto.getChatMode().equals("자유") ? requestDto.getChatDuration().get() : totalChatDuration)
                 .debateSettings(buildDebateSettings(requestDto))
                 .chatStatus("CREATE")
                 .build();
@@ -65,6 +70,8 @@ public class ChatRoomService {
                     .negativeEntry(debateSettingsDto.getNegativeEntry())
                     .positiveRebuttal(debateSettingsDto.getPositiveRebuttal())
                     .negativeRebuttal(debateSettingsDto.getNegativeRebuttal())
+                    .positiveQuestioning(debateSettingsDto.getPositiveQuestioning())
+                    .negativeQuestioning(debateSettingsDto.getNegativeQuestioning())
                     .votingTime(0.5)
                     .build();
         } else {
@@ -73,6 +80,7 @@ public class ChatRoomService {
     }
 
 
+    /* 채팅방 참가 */
     public ChatRoomJoinResponseDto joinChatRoom(String id, ChatRoomJoinRequestDto chatRoomJoinRequestDto) {
 
         String subchannelId = null;
