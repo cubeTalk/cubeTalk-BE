@@ -104,7 +104,7 @@ public class ChatRoomService {
         if (chatRoomJoinRequestDto.getNickName() == null) {
             nickName = RandomNicknameGenerator.generateNickname();
         } else {
-            if (validateNickName(chatRoomJoinRequestDto.getNickName())) {
+            if (validateNickName(id,chatRoomJoinRequestDto.getNickName())) {
                 nickName = chatRoomJoinRequestDto.getNickName();
             } else {
                 throw new IllegalArgumentException("이미 사용중인 닉네임 입니다.");
@@ -119,7 +119,8 @@ public class ChatRoomService {
         Participant participant = Participant.builder()
                 .memberId(enterMember)
                 .role(chatRoomJoinRequestDto.getRole())
-                .status("PENDING")
+                .status(chatRoom.getOwnerId().equals(enterMember) ? "OWNER" : "PENDING")
+                .nickName(nickName)
                 .build();
 
         chatRoom.getParticipants().add(participant);
@@ -153,13 +154,21 @@ public class ChatRoomService {
         memberRepository.save(member);
         chatRoomRepository.save(chatRoom);
 
-        return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName, DateTimeUtils.nowFromZone());
+        return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName,ChatRoomInfoResponseDto.fromChatRoom(chatRoom),DateTimeUtils.nowFromZone());
     }
 
 
     /* 중복 닉네임 검증 */
-    public boolean validateNickName(String nickName) {
-        return !memberRepository.existsByNickName(nickName); // 존재하면 false 반환
+    public boolean validateNickName(String roomId, String nickName) {
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(()-> new IllegalArgumentException("해당채팅방이 존재하지 않습니다."));
+
+        for (Participant participant: chatRoom.getParticipants()){
+            if (participant.getNickName().equals(nickName)) {
+                return false; // 존재하면 false 반환
+            }
+        }
+        return true;
     }
 
 
@@ -402,7 +411,7 @@ public class ChatRoomService {
             Participant participant = participants.get(i);
             if (participant.getMemberId().equals(memberId)) {
                 // role과 status가 변경된 새로운 Participant 객체로 교체
-                Participant updatedParticipant = Participant.changeRole(participant, originRole, participant.getStatus());
+                Participant updatedParticipant = Participant.changeRole(participant, originRole, participant.getStatus(),participant.getNickName());
                 participants.set(i, updatedParticipant);  // 기존 인덱스에 새 객체로 교체
             }
         }
