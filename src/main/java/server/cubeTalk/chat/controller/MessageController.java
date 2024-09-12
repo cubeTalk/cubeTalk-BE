@@ -27,21 +27,21 @@ public class MessageController {
       /topic/{channelId} 구독
      */
 
-    @MessageMapping("/message")
-    public  void newUser(@Payload Message message, SimpMessageHeaderAccessor headerAccessor) {
-        headerAccessor.getSessionAttributes().put("username", message.getSender());
-
-        Message processedMessage = Message.builder()
-                .type(message.getType())
-                .sender(message.getSender())
-                .channelId(message.getChannelId())
-                .data(message.getData())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        simpMessageSendingOperations.convertAndSend("/topic/" + processedMessage.getChannelId(), processedMessage);
-
-    }
+//    @MessageMapping("/message")
+//    public  void newUser(@Payload Message message, SimpMessageHeaderAccessor headerAccessor) {
+//        headerAccessor.getSessionAttributes().put("username", message.getSender());
+//
+//        Message processedMessage = Message.builder()
+//                .type(message.getType())
+//                .sender(message.getSender())
+//                .channelId(message.getChannelId())
+//                .data(message.getData())
+//                .timestamp(LocalDateTime.now())
+//                .build();
+//
+//        simpMessageSendingOperations.convertAndSend("/topic/" + processedMessage.getChannelId(), processedMessage);
+//
+//    }
 
 //    @MessageMapping("/changeTeam")
 //    public void changeTeam(ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
