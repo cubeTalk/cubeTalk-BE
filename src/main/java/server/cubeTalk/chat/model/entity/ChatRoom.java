@@ -26,7 +26,7 @@ public class ChatRoom extends BaseTimeStamp {
     private String description;
     private String chatMode;
     private int maxParticipants;
-    private int chatDuration;
+    private Double chatDuration;
     private String ownerId; //member의 id를 참조
     private String chatStatus;
     private DebateSettings debateSettings;
