@@ -16,5 +16,7 @@ public class ChatRoomJoinResponseDto {
     private String channelId;
     private String subChannelId;
     private String nickName;
+    private ChatRoomInfoResponseDto chatRoomInfo;
     private LocalDateTime severTimeStamp;
+
 }
