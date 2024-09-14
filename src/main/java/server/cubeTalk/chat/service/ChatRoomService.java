@@ -16,10 +16,7 @@ import server.cubeTalk.member.repository.MemberRepository;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -608,6 +605,65 @@ public class ChatRoomService {
                 ))
                 .collect(Collectors.toList());
 
+    }
+
+    @Transactional
+    public ChatRoomSendMessageResponseDto sendChatMessage(String channelId, ChatRoomSendMessageRequestDto chatRoomSendMessageRequestDto) {
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomSendMessageRequestDto.getId())
+                .orElseThrow(()->new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
+
+        final String main = "MAIN";
+
+        // 메인 채널 검증
+        if (chatRoomSendMessageRequestDto.getType().equals(main)) {
+            if (!chatRoom.getChannelId().equals(channelId)) {
+                webSocketService.sendErrorMessage("채팅 메시지 예외", "메인 채팅방이 아닙니다. channelId와 type을 다시 확인해주세요.");
+                throw new IllegalArgumentException("메인 채팅방이 아닙니다.");
+            }
+        } else {
+            // 서브 채널 검증
+            validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
+        }
+
+        List<Participant> participants = chatRoom.getParticipants();
+        if (participants == null || participants.isEmpty()) {
+            webSocketService.sendErrorMessage("채팅 메시지 예외", "참가자 목록이 없습니다.");
+            return null;
+        }
+
+        boolean isParticipantInRoom = participants.stream()
+                .anyMatch(participant ->
+                        participant.getNickName() != null && participant.getNickName().equals(chatRoomSendMessageRequestDto.getSender())
+                );
+
+        // 참가자가 없는 경우
+        if (!isParticipantInRoom) {
+            webSocketService.sendErrorMessage("채팅 메시지 예외", "해당 채팅방에 없는 멤버입니다.");
+            throw new IllegalArgumentException("해당 채팅방에 없는 멤버입니다.");
+        }
+
+        Message message = Message.builder()
+                .type(chatRoomSendMessageRequestDto.getType())
+                .sender(chatRoomSendMessageRequestDto.getSender())
+                .channelId(channelId)
+                .message(chatRoomSendMessageRequestDto.getMessage())
+                .replyToMessageId(chatRoomSendMessageRequestDto.getReplyToMessageId().orElse(null))
+                .build();
+
+        messageRepository.save(message);
+
+        return new ChatRoomSendMessageResponseDto(message.getId(),message.getType(),message.getSender(), message.getMessage().toString(),message.getReplyToMessageId(), message.getCreatedAt()) ;
+    }
+
+    public void validateSubChannel(ChatRoom chatRoom, String channelId, String dtoType) {
+        Optional<SubChatRoom> subChannel = chatRoom.getSubChatRooms().stream()
+                .filter(subChatRoom -> subChatRoom.getSubChannelId().equals(channelId) && subChatRoom.getType().equals(dtoType))
+                .findAny();
+
+        if (!subChannel.isPresent()) {
+            webSocketService.sendErrorMessage("채팅 메시지 예외", dtoType + " 채팅방이 아닙니다. channelId와 type을 다시 확인해주세요.");
+            throw new IllegalArgumentException(dtoType + " 채팅방이 존재하지 않습니다.");
+        }
     }
 
 
