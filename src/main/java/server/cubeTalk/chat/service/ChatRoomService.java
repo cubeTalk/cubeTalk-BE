@@ -5,19 +5,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import server.cubeTalk.chat.model.dto.*;
-import server.cubeTalk.chat.model.entity.ChatRoom;
-import server.cubeTalk.chat.model.entity.DebateSettings;
-import server.cubeTalk.chat.model.entity.Participant;
-import server.cubeTalk.chat.model.entity.SubChatRoom;
+import server.cubeTalk.chat.model.entity.*;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
+import server.cubeTalk.chat.repository.MessageRepository;
 import server.cubeTalk.common.util.DateTimeUtils;
 import server.cubeTalk.common.util.RandomNicknameGenerator;
 import server.cubeTalk.member.model.entity.Member;
 import server.cubeTalk.member.repository.MemberRepository;
 
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final MemberRepository memberRepository;
+    private final MessageRepository messageRepository;
 
     /* 채팅방 생성 */
     public ChatRoomCreateResponseDto createChatRoom(ChatRoomCreateRequestDto requestDto) {
@@ -548,6 +552,16 @@ public class ChatRoomService {
         }
 
         return "요청처리에 성공했습니다";
+    }
+
+    public ChatRoomBeforeMessagesResponseDto getBeforeMessages(String channelId, ZonedDateTime before) {
+        List<Message> messages = messageRepository.findByChannelId(channelId);
+
+        List<Message> filteredMessages = messages.stream()
+                .filter(message -> message.getCreatedAt().isBefore(before.toLocalDateTime())) // createdAt이 before보다 이전인 메시지만
+                .toList();
+
+        return new ChatRoomBeforeMessagesResponseDto(ChatRoomMessages.fromMessagesByChannelId(filteredMessages,channelId));
     }
 
 
