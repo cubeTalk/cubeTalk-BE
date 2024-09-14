@@ -27,6 +27,7 @@ public class SecurityConfig {
                     configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173"));  // 허용할 도메인
                     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));  // 허용할 HTTP 메소드
                     configuration.setAllowedHeaders(Collections.singletonList("*"));
+                    configuration.setAllowCredentials(true);
                     return configuration;
                 }));
 
