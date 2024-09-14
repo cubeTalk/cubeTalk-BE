@@ -570,13 +570,13 @@ public class ChatRoomService {
     public List<ChatRoomParticipantsListResponseDto> sendParticipantsList(String id, ChatRoomReadyStatusRequestDto chatRoomReadyStatusRequestDto) {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
-
+        final String title = "참여자목록 불러오기";
         if (!chatRoom.getChatMode().equals(chatRoomReadyStatusRequestDto.getType()) || !chatRoomReadyStatusRequestDto.getType().equals("찬반"))
-            webSocketService.sendErrorMessage(id,"채팅방 모드와 request의 type이 일치하지않습니다.");
+            webSocketService.sendErrorMessage(title,"채팅방 모드와 request의 type이 일치하지않습니다.");
         if (chatRoom.getOwnerId().equals(chatRoomReadyStatusRequestDto.getMemberId()))
-            webSocketService.sendErrorMessage(id,"방장은 준비할 수 없습니다.");
+            webSocketService.sendErrorMessage(title,"방장은 준비할 수 없습니다.");
         if (!chatRoom.getChatStatus().equals("CREATE"))
-            webSocketService.sendErrorMessage(id,"이미 시작한 채팅방은 준비상태를 변경할 수 없습니다.");
+            webSocketService.sendErrorMessage(title,"이미 시작한 채팅방은 준비상태를 변경할 수 없습니다.");
 
         Participant p = chatRoom.getParticipants().stream()
                 .filter(participant -> participant.getMemberId().equals(chatRoomReadyStatusRequestDto.getMemberId()))
