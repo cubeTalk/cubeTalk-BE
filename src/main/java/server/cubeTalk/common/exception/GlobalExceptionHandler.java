@@ -50,14 +50,17 @@ public class GlobalExceptionHandler {
 
 
     @MessageExceptionHandler(MethodArgumentNotValidException.class)
-    public void handleValidationException(MethodArgumentNotValidException ex, MessageHeaders headers) {
-        String destination = headers.get("simpDestination").toString();
-        String id = destination.split("\\.")[1]; // id 추출
+    public void handleValidationException(MethodArgumentNotValidException ex) {
 
         Map<String, String> errors = new HashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             errors.put(error.getField(), error.getDefaultMessage());
         }
-        messagingTemplate.convertAndSend("/topic/error." + id, errors);
+
+        // CommonResponseSocketValidDto를 사용하여 응답 메시지 생성
+        CommonResponseDto.CommonResponseSocketValidDto<Map<String, String>> response =
+                CommonResponseDto.CommonResponseSocketValidDto.socketValid("유효성 검사 실패", errors);
+
+        messagingTemplate.convertAndSend("/topic/error", response);
     }
 }
