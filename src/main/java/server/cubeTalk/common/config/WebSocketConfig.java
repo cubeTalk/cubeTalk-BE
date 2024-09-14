@@ -9,6 +9,7 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 
+
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
@@ -38,7 +39,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     .setClientLogin(rabbitmqUser)
                     .setClientPasscode(rabbitmqPass)
                     .setSystemLogin(rabbitmqUser)
-                    .setSystemPasscode(rabbitmqPass);
+                    .setSystemPasscode(rabbitmqPass)
+                    .setSystemHeartbeatSendInterval(10000);
 
     }
 
@@ -47,7 +49,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry
                 .addEndpoint("/ws")
-                .setAllowedOrigins("*")
+                .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
 }
