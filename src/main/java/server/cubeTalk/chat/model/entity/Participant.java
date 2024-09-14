@@ -1,11 +1,15 @@
 package server.cubeTalk.chat.model.entity;
 
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Builder
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Participant {
     private String memberId;
     private String role;
