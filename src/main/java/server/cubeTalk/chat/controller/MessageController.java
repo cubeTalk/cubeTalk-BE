@@ -1,21 +1,27 @@
 package server.cubeTalk.chat.controller;
 
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
-import server.cubeTalk.chat.model.dto.ChatRoomTeamChangeRequestDto;
-import server.cubeTalk.chat.model.dto.ChatRoomTeamChangeResponseDto;
-import server.cubeTalk.chat.model.entity.Message;
+import server.cubeTalk.chat.model.dto.ChatRoomReadyStatusRequestDto;
+import server.cubeTalk.chat.model.dto.ChatRoomParticipantsListResponseDto;
 import server.cubeTalk.chat.service.ChatRoomService;
+import server.cubeTalk.common.dto.CommonResponseDto;
 
-import java.time.LocalDateTime;
+import java.util.List;
+
 
 @Controller
 @RequiredArgsConstructor
+@Log4j2
 public class MessageController {
 
     private final ChatRoomService chatRoomService;
@@ -43,13 +49,18 @@ public class MessageController {
 //
 //    }
 
-//    @MessageMapping("/changeTeam")
-//    public void changeTeam(ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
-//
-//        ChatRoomTeamChangeResponseDto chatRoomTeamChangeResponseDto = chatRoomService.changeTeam(chatRoomTeamChangeRequestDto.getId(), chatRoomTeamChangeRequestDto.getMemberId(),chatRoomTeamChangeRequestDto);
-//
-//        simpMessageSendingOperations.convertAndSend("/topic/" + chatRoomTeamChangeResponseDto.getChannelId(), chatRoomTeamChangeResponseDto);
-//
-//    }
+    @MessageMapping("/{id}/ready")
+    @SendTo("/topic/{id}.participants.list")
+    public CommonResponseDto<List<ChatRoomParticipantsListResponseDto>> sendParticipantsList(
+            @DestinationVariable
+            @Pattern(regexp = "^[a-fA-F0-9]{24}$",
+                    message = "Invalid UUID format")
+            String id,
+            @Payload @Valid ChatRoomReadyStatusRequestDto chatRoomReadyStatusRequestDto) {
+        log.info("전송");
+        List<ChatRoomParticipantsListResponseDto> responseDto = chatRoomService.sendParticipantsList(id,chatRoomReadyStatusRequestDto);
+        log.info(responseDto);
+        return CommonResponseDto.success(responseDto);
+    }
 
 }

@@ -29,6 +29,7 @@ public class ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final MemberRepository memberRepository;
     private final MessageRepository messageRepository;
+    private final WebSocketService webSocketService;
 
     /* 채팅방 생성 */
     public ChatRoomCreateResponseDto createChatRoom(ChatRoomCreateRequestDto requestDto) {
@@ -562,6 +563,51 @@ public class ChatRoomService {
                 .toList();
 
         return new ChatRoomBeforeMessagesResponseDto(ChatRoomMessages.fromMessagesByChannelId(filteredMessages,channelId));
+    }
+
+    /* 준비상태 변경에 따른 참여자 목록 */
+    @Transactional
+    public List<ChatRoomParticipantsListResponseDto> sendParticipantsList(String id, ChatRoomReadyStatusRequestDto chatRoomReadyStatusRequestDto) {
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
+
+        if (!chatRoom.getChatMode().equals(chatRoomReadyStatusRequestDto.getType()) || !chatRoomReadyStatusRequestDto.getType().equals("찬반"))
+            webSocketService.sendErrorMessage(id,"채팅방 모드와 request의 type이 일치하지않습니다.");
+        if (chatRoom.getOwnerId().equals(chatRoomReadyStatusRequestDto.getMemberId()))
+            webSocketService.sendErrorMessage(id,"방장은 준비할 수 없습니다.");
+        if (!chatRoom.getChatStatus().equals("CREATE"))
+            webSocketService.sendErrorMessage(id,"이미 시작한 채팅방은 준비상태를 변경할 수 없습니다.");
+
+        Participant p = chatRoom.getParticipants().stream()
+                .filter(participant -> participant.getMemberId().equals(chatRoomReadyStatusRequestDto.getMemberId()))
+                .findFirst()
+                .orElseThrow(()-> new IllegalArgumentException("해당 member가 없습니다."));
+
+        Participant updatedParticipant = Participant.builder()
+                .memberId(p.getMemberId())
+                .role(p.getRole())
+                .status(chatRoomReadyStatusRequestDto.getStatus())
+                .build();
+
+        List<Participant> updatedParticipants = chatRoom.getParticipants().stream()
+                .map(participant -> participant.getMemberId().equals(p.getMemberId()) ? updatedParticipant : participant)
+                .toList();
+
+        ChatRoom updateChatRoom = chatRoom.toBuilder()
+                .participants(updatedParticipants)
+                .build();
+
+        chatRoomRepository.save(updateChatRoom);
+
+        return chatRoom.getParticipants().stream()
+                .map(participant -> new ChatRoomParticipantsListResponseDto(
+                        chatRoom.getChatMode(),
+                        participant.getNickName(),
+                        participant.getRole(),
+                        participant.getStatus()
+                ))
+                .collect(Collectors.toList());
+
     }
 
 
