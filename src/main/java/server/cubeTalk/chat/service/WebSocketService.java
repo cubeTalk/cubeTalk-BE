@@ -11,7 +11,7 @@ import server.cubeTalk.common.dto.CommonResponseDto;
 public class WebSocketService {
     private final SimpMessagingTemplate messagingTemplate;
     public void sendErrorMessage(String channelId, String errorMessage) {
-        messagingTemplate.convertAndSend("/topic/" + channelId, CommonResponseDto.fail(errorMessage));
+        messagingTemplate.convertAndSend("/topic/error." + channelId, CommonResponseDto.CommonResponseErrorDto.error(400,errorMessage));
     }
 
 }

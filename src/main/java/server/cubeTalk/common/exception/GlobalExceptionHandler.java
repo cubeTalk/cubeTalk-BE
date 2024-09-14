@@ -1,6 +1,11 @@
 package server.cubeTalk.common.exception;
 
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,7 +18,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final SimpMessagingTemplate messagingTemplate;
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<CommonResponseDto.CommonResponseErrorDto> handleIllegalArgumentException(IllegalArgumentException ex) {
@@ -38,5 +46,18 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         return new ResponseEntity<>(new CommonResponseDto<>(400, "유효성 검사 실패", errors), HttpStatus.BAD_REQUEST);
+    }
+
+
+    @MessageExceptionHandler(MethodArgumentNotValidException.class)
+    public void handleValidationException(MethodArgumentNotValidException ex, MessageHeaders headers) {
+        String destination = headers.get("simpDestination").toString();
+        String id = destination.split("\\.")[1]; // id 추출
+
+        Map<String, String> errors = new HashMap<>();
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            errors.put(error.getField(), error.getDefaultMessage());
+        }
+        messagingTemplate.convertAndSend("/topic/error." + id, errors);
     }
 }

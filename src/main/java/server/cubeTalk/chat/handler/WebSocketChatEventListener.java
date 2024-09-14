@@ -31,26 +31,26 @@ public class WebSocketChatEventListener {
 
     @EventListener
     public void handleSessionSubscribeEvent(SessionSubscribeEvent event) {
-        try {
+//        try {
             log.info("구독");
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         System.out.println(headerAccessor.getMessageHeaders());
 
-        String username = headerAccessor.getFirstNativeHeader("username");
-        String channelId = headerAccessor.getDestination();
-        System.out.println("username: " + username);
-
-        if (username == null) {
-            throw new IllegalArgumentException("헤더값 username이 null값입니다.");
-        }
-
-        if (username != null && channelId != null) {
-            String message = username + "님이 입장하셨습니다.";
-            simpMessageSendingOperations.convertAndSend(channelId, message);
-        }
-    }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
+//        String username = headerAccessor.getFirstNativeHeader("username");
+//        String channelId = headerAccessor.getDestination();
+//        System.out.println("username: " + username);
+//
+//        if (username == null) {
+//            throw new IllegalArgumentException("헤더값 username이 null값입니다.");
+//        }
+//
+//        if (username != null && channelId != null) {
+//            String message = username + "님이 입장하셨습니다.";
+//            simpMessageSendingOperations.convertAndSend(channelId, message);
+//        }
+//    }
+//        catch (Exception e) {
+//            e.printStackTrace();
+//        }
     }
 }
