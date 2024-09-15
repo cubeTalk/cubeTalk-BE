@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -253,12 +255,12 @@ public class ChatController {
                     content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
     })
     public ResponseEntity<CommonResponseDto<List<ChatRoomFilterListResponseDto>>> getFilterChatRooms(
-            @PathVariable("mode") String mode,
-            @RequestParam(defaultValue = "createdAt") String sort,
-            @RequestParam(defaultValue = "asc") String order,
-            @RequestParam(defaultValue = "") String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @PathVariable("mode")  @Pattern(regexp = "^(찬반|자유)$", message = "유효하지 않는 mode 요청입니다.") String mode,
+            @RequestParam(defaultValue = "createdAt") @Pattern(regexp = "^(createdAt|participants)$", message = "유효하지 않는 sort 요청입니다.") String sort,
+            @RequestParam(defaultValue = "asc") @Pattern(regexp = "^(asc|desc)$", message = "유효하지 않는 order 요청입니다.")String order,
+            @RequestParam(defaultValue = "") @Pattern(regexp = "^(STARTED|CREATED)$", message = "유효하지 않는 status 요청입니다.") String status,
+            @RequestParam(defaultValue = "0") @Min(value = 0,message = "0부터 페이지 요청이 가능합니다.") int page,
+            @RequestParam(defaultValue = "20") @Min(value = 1,message = "최소 1부터 size 요청이 가능합니다.") @Max(value = 100, message = "최대 100까지 size 요청이 가능합니다.") int size
     ) {
 
         List<ChatRoomFilterListResponseDto> responseDtoPage = chatRoomService.getFilteredChatRooms(mode, sort, order, status, page, size);
