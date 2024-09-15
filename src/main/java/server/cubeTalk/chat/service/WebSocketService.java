@@ -107,6 +107,11 @@ public class WebSocketService {
         );
 
         if (isVoteEnd) {
+            ChatRoom endedChatRoom = chatRoom.toBuilder()
+                    .chatStatus("ENDED")
+                    .build();
+            chatRoomRepository.save(endedChatRoom);
+            /* 추후 db 삭제 및 멤버삭제 */
             messagingTemplate.convertAndSend("/topic/progress." + chatRoomId, finalMessage);
         }
     }
