@@ -43,6 +43,6 @@ public class Vote {
         return frequencyMap.entrySet().stream()
                 .max(Map.Entry.comparingByValue())  // 가장 높은 값(등장 횟수)을 가진 항목을 찾음
                 .map(Map.Entry::getKey)            // 해당 키(닉네임)를 반환
-                .orElse(null);                     // 빈 경우에는 null 반환
+                .orElse(null);               // 빈 경우에는 null 반환
     }
 }
