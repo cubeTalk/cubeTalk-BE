@@ -58,9 +58,9 @@ public class MessageController {
                     message = "Invalid UUID format")
             String id,
             @Payload @Valid ChatRoomReadyStatusRequestDto chatRoomReadyStatusRequestDto) {
-        log.info("전송");
+
         List<ChatRoomParticipantsListResponseDto> responseDto = chatRoomService.sendParticipantsList(id,chatRoomReadyStatusRequestDto);
-        log.info(responseDto);
+
         return CommonResponseDto.success(responseDto);
     }
 
