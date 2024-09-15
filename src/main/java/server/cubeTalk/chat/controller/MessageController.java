@@ -12,10 +12,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
-import server.cubeTalk.chat.model.dto.ChatRoomReadyStatusRequestDto;
-import server.cubeTalk.chat.model.dto.ChatRoomParticipantsListResponseDto;
-import server.cubeTalk.chat.model.dto.ChatRoomSendMessageRequestDto;
-import server.cubeTalk.chat.model.dto.ChatRoomSendMessageResponseDto;
+import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 import server.cubeTalk.chat.service.ChatRoomService;
 import server.cubeTalk.common.dto.CommonResponseDto;
@@ -63,5 +60,18 @@ public class MessageController {
 
         return CommonResponseDto.success(responseDto);
     }
+
+    @MessageMapping("/{id}/vote")
+    public void voteChat(
+            @DestinationVariable
+            @Pattern(regexp = "^[a-fA-F0-9]{24}$",
+                    message = "Invalid UUID format")
+            String id,
+            @Payload @Valid ChatRoomVoteRequestDto chatRoomVotesRequestDto) {
+
+        chatRoomService.voteChat(id,chatRoomVotesRequestDto);
+    }
+
+
 
 }
