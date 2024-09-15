@@ -9,17 +9,26 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.model.entity.ChatRoom;
+import server.cubeTalk.chat.model.entity.Participant;
+import server.cubeTalk.chat.repository.ChatRoomRepository;
 import server.cubeTalk.chat.service.ChatRoomService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Tag(name = "채팅", description = "채팅 API")
 @Validated
@@ -234,6 +243,30 @@ public class ChatController {
 
         return new ResponseEntity<>(CommonResponseDto.CommonResponseSuccessDto.success(200,message), HttpStatus.OK);
     }
+
+    @GetMapping("/chatrooms/{mode}")
+    @Operation(summary = "채팅방 목록 필터링 API", description = "채팅방 목록들에 대한 필터를 기준으로 페이지네이션으로 반환합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
+            @ApiResponse(responseCode = "400", description = "fail",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto<List<ChatRoomFilterListResponseDto>>> getFilterChatRooms(
+            @PathVariable("mode") String mode,
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "asc") String order,
+            @RequestParam(defaultValue = "") String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+
+        List<ChatRoomFilterListResponseDto> responseDtoPage = chatRoomService.getFilteredChatRooms(mode, sort, order, status, page, size);
+
+        return new ResponseEntity<>(CommonResponseDto.success(responseDtoPage), HttpStatus.OK);
+    }
+
+
 
 
 
