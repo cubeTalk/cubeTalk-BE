@@ -188,6 +188,9 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
 
+        if (chatRoom.getChatStatus().equals("STARTED"))
+            throw new IllegalArgumentException("이미 시작된 채팅방이기 때문에 변경할 수 없습니다.");
+
         Participant searchParticipant = chatRoom.getParticipants().stream()
                 .filter(p -> p.getMemberId().equals(memberId))
                 .findFirst()
@@ -506,7 +509,8 @@ public class ChatRoomService {
     public String changeChatRoomSettings(String id, ChatRoomChangeSettingsRequestDto chatRoomChangeSettingsRequestDto) {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
-
+        if (chatRoom.getChatStatus().equals("STARTED"))
+            throw new IllegalArgumentException("이미 시작된 채팅방이기 때문에 변경할 수 없습니다.");
         if (!chatRoom.getOwnerId().equals(chatRoomChangeSettingsRequestDto.getOwnerId())) {
             throw new IllegalArgumentException("채팅 설정은 방장만 변경이 가능합니다.");
         }
@@ -568,22 +572,35 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
         final String title = "참여자목록 불러오기";
-        if (!chatRoom.getChatMode().equals(chatRoomReadyStatusRequestDto.getType()) || !chatRoomReadyStatusRequestDto.getType().equals("찬반"))
-            webSocketService.sendErrorMessage(title,"채팅방 모드와 request의 type이 일치하지않습니다.");
-        if (chatRoom.getOwnerId().equals(chatRoomReadyStatusRequestDto.getMemberId()))
-            webSocketService.sendErrorMessage(title,"방장은 준비할 수 없습니다.");
-        if (!chatRoom.getChatStatus().equals("CREATE"))
-            webSocketService.sendErrorMessage(title,"이미 시작한 채팅방은 준비상태를 변경할 수 없습니다.");
+        if (!chatRoom.getChatMode().equals(chatRoomReadyStatusRequestDto.getType()) || !chatRoomReadyStatusRequestDto.getType().equals("찬반")) {
+            webSocketService.sendErrorMessage(title, "채팅방 모드와 request의 type이 일치하지않습니다.");
+            throw new IllegalArgumentException("채팅방 모드와 request의 type이 일치하지않습니다.");
+        }
+        if (chatRoom.getOwnerId().equals(chatRoomReadyStatusRequestDto.getMemberId())) {
+            webSocketService.sendErrorMessage(title, "방장은 준비할 수 없습니다.");
+            throw new IllegalArgumentException("방장은 준비할 수 없습니다.");
+        }
+        if (chatRoom.getChatStatus().equals("STARTED")) {
+            webSocketService.sendErrorMessage(title, "이미 시작한 채팅방은 준비상태를 변경할 수 없습니다.");
+            throw new IllegalArgumentException("이미 시작한 채팅방은 준비상태를 변경할 수 없습니다.");
+        }
 
         Participant p = chatRoom.getParticipants().stream()
                 .filter(participant -> participant.getMemberId().equals(chatRoomReadyStatusRequestDto.getMemberId()))
                 .findFirst()
                 .orElseThrow(()-> new IllegalArgumentException("해당 member가 없습니다."));
 
+
+        for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
+            subChatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(p.getMemberId()));
+            break;
+        }
+
         Participant updatedParticipant = Participant.builder()
                 .memberId(p.getMemberId())
                 .role(p.getRole())
                 .status(chatRoomReadyStatusRequestDto.getStatus())
+                .nickName(p.getNickName())
                 .build();
 
         List<Participant> updatedParticipants = chatRoom.getParticipants().stream()
@@ -593,6 +610,13 @@ public class ChatRoomService {
         ChatRoom updateChatRoom = chatRoom.toBuilder()
                 .participants(updatedParticipants)
                 .build();
+
+        for ( SubChatRoom subChatRoom : chatRoom.getSubChatRooms() ) {
+            if (subChatRoom.getType().equals(updatedParticipant.getRole()) ){
+                subChatRoom.addParticipant(updatedParticipant);
+                break;
+            }
+        }
 
         chatRoomRepository.save(updateChatRoom);
 
@@ -655,6 +679,7 @@ public class ChatRoomService {
         return new ChatRoomSendMessageResponseDto(message.getId(),message.getType(),message.getSender(), message.getMessage().toString(),message.getReplyToMessageId(), message.getCreatedAt()) ;
     }
 
+    /* subchannel 유효성 검증 */
     public void validateSubChannel(ChatRoom chatRoom, String channelId, String dtoType) {
         Optional<SubChatRoom> subChannel = chatRoom.getSubChatRooms().stream()
                 .filter(subChatRoom -> subChatRoom.getSubChannelId().equals(channelId) && subChatRoom.getType().equals(dtoType))
@@ -665,6 +690,33 @@ public class ChatRoomService {
             throw new IllegalArgumentException(dtoType + " 채팅방이 존재하지 않습니다.");
         }
     }
+
+    /* 채팅방 시작 */
+    @Transactional
+    public String startChat(String id, ChatRoomStartRequestDto chatRoomStartRequestDto) {
+
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(()->new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
+
+        if (!chatRoom.getOwnerId().equals(chatRoomStartRequestDto.getOwnerId()))
+            throw new IllegalArgumentException("방장만 시작할 수 있습니다.");
+
+        boolean isPendingParticipant = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getStatus().equals("PENDING"));
+
+        if (isPendingParticipant) {
+            throw new IllegalArgumentException("참가자 모두 준비상태여야 시작할 수 있습니다.");
+        }
+        ChatRoom updatedChatRoom = chatRoom.toBuilder()
+                .chatStatus("STARTED")
+                .build();
+
+        chatRoomRepository.save(updatedChatRoom);
+//        webSocketService.progressChatRoom(updatedChatRoom);
+
+        return "채팅방 시작 완료";
+    }
+
+
 
 
 }

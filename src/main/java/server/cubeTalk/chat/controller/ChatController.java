@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import server.cubeTalk.chat.model.dto.*;
+import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.service.ChatRoomService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
@@ -214,6 +215,26 @@ public class ChatController {
         ChatRoomBeforeMessagesResponseDto responseDto = chatRoomService.getBeforeMessages(channelId, before);
 
         return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
+    }
+
+    @PostMapping("/{id}/start")
+    @Operation(summary = "채팅방 시작하기 API", description = "채팅방 시작하기 : /topic/progress.{id} 으로 미리 구독 후 성공시 해당 API 요청")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseSuccessDto.class))}),
+            @ApiResponse(responseCode = "400", description = "fail",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto.CommonResponseSuccessDto> startChat(
+            @PathVariable("id")
+            @Pattern(regexp = "^[a-fA-F0-9]{24}$",
+                    message = "Invalid UUID format") String id,
+            @Valid @RequestBody ChatRoomStartRequestDto chatRoomStartRequestDto
+            ) {
+
+        String message = chatRoomService.startChat(id,chatRoomStartRequestDto);
+
+        return new ResponseEntity<>(CommonResponseDto.CommonResponseSuccessDto.success(200,message), HttpStatus.OK);
     }
 
 
