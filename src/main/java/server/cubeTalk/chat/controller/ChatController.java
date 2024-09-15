@@ -123,7 +123,7 @@ public class ChatController {
     }
 
 
-    @PatchMapping("/{id}/home")
+    @GetMapping("/{id}/home")
     @Operation(summary = "home 버튼 클릭시 발생하는 API", description = "home 버튼 GET 요청하는 API")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "success",
