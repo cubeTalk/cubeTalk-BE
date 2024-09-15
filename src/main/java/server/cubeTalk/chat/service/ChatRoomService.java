@@ -52,7 +52,7 @@ public class ChatRoomService {
                 .chatMode(requestDto.getChatMode())
                 .chatDuration(requestDto.getChatDuration().isPresent() && requestDto.getChatMode().equals("자유") ? requestDto.getChatDuration().get() : totalChatDuration)
                 .debateSettings(buildDebateSettings(requestDto))
-                .chatStatus("CREATE")
+                .chatStatus("CREATED")
                 .build();
 
         Member member = Member.builder()
@@ -774,8 +774,18 @@ public class ChatRoomService {
     /* 채팅방 목록 페이지 네이션 */
     public List<ChatRoomFilterListResponseDto> getFilteredChatRooms(String mode, String sort, String order, String status, int page, int size) {
         Sort.Direction direction = order.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sort));
+        Sort sortCriteria;
 
+        // 정렬 기준에 따른 Sort 객체 생성
+        if (sort.equalsIgnoreCase("participants")) {
+            sortCriteria = Sort.by(direction, "participants.size"); // 참가자 수 기준으로 정렬
+        } else {
+            sortCriteria = Sort.by(direction, "createdAt"); // 기본적으로 생성일 기준으로 정렬
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sortCriteria);
+
+        // 상태별로 필터링된 채팅방 목록 가져오기
         Page<ChatRoom> chatRooms;
         if (status.equals("STARTED")) {
             chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "STARTED", pageable);
@@ -785,10 +795,12 @@ public class ChatRoomService {
             chatRooms = chatRoomRepository.findByChatMode(mode, pageable);
         }
 
+        // 페이지 결과를 DTO로 변환
         return chatRooms.getContent().stream()
                 .map(this::toChatRoomFilterListResponseDto)
                 .collect(Collectors.toList());
     }
+
 
     private ChatRoomFilterListResponseDto toChatRoomFilterListResponseDto(ChatRoom chatRoom) {
         String ownerNickName = chatRoom.getParticipants().stream()
