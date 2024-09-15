@@ -2,6 +2,10 @@ package server.cubeTalk.chat.service;
 
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import server.cubeTalk.chat.model.dto.*;
@@ -48,7 +52,7 @@ public class ChatRoomService {
                 .chatMode(requestDto.getChatMode())
                 .chatDuration(requestDto.getChatDuration().isPresent() && requestDto.getChatMode().equals("자유") ? requestDto.getChatDuration().get() : totalChatDuration)
                 .debateSettings(buildDebateSettings(requestDto))
-                .chatStatus("CREATE")
+                .chatStatus("CREATED")
                 .build();
 
         Member member = Member.builder()
@@ -765,6 +769,58 @@ public class ChatRoomService {
                 .opposite(opposite)
                 .build();
 
+    }
+
+    /* 채팅방 목록 페이지 네이션 */
+    public List<ChatRoomFilterListResponseDto> getFilteredChatRooms(String mode, String sort, String order, String status, int page, int size) {
+        Sort.Direction direction = order.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sortCriteria;
+
+        // 정렬 기준에 따른 Sort 객체 생성
+        if (sort.equalsIgnoreCase("participants")) {
+            sortCriteria = Sort.by(direction, "participants.size"); // 참가자 수 기준으로 정렬
+        } else {
+            sortCriteria = Sort.by(direction, "createdAt"); // 기본적으로 생성일 기준으로 정렬
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sortCriteria);
+
+        // 상태별로 필터링된 채팅방 목록 가져오기
+        Page<ChatRoom> chatRooms;
+        if (status.equals("STARTED")) {
+            chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "STARTED", pageable);
+        } else if (status.equals("CREATED")) {
+            chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "CREATED", pageable);
+        } else {
+            chatRooms = chatRoomRepository.findByChatMode(mode, pageable);
+        }
+
+        // 페이지 결과를 DTO로 변환
+        return chatRooms.getContent().stream()
+                .map(this::toChatRoomFilterListResponseDto)
+                .collect(Collectors.toList());
+    }
+
+
+    private ChatRoomFilterListResponseDto toChatRoomFilterListResponseDto(ChatRoom chatRoom) {
+        String ownerNickName = chatRoom.getParticipants().stream()
+                .filter(p -> p.getStatus().equals("OWNER"))
+                .findFirst()
+                .flatMap(p -> Optional.ofNullable(p.getNickName())) // null일 수 있는 nickName 처리
+                .orElse("Unknown");
+
+        return new ChatRoomFilterListResponseDto(
+                chatRoom.getId(),
+                chatRoom.getChatMode(),
+                chatRoom.getTitle(),
+                chatRoom.getDescription(),
+                chatRoom.getChatDuration(),
+                ownerNickName, // 필터링된 소유자의 닉네임 사용
+                chatRoom.getMaxParticipants(),
+                chatRoom.getParticipants().size(),
+                chatRoom.getCreatedAt(),
+                chatRoom.getUpdatedAt()
+        );
     }
 }
 
