@@ -164,7 +164,7 @@ public class ChatRoomService {
         memberRepository.save(member);
         chatRoomRepository.save(chatRoom);
 
-        return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName, ChatRoomInfoResponseDto.fromChatRoom(chatRoom), DateTimeUtils.nowFromZone());
+        return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName);
     }
 
 
