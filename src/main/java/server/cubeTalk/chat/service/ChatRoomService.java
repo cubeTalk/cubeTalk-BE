@@ -164,7 +164,7 @@ public class ChatRoomService {
         memberRepository.save(member);
         chatRoomRepository.save(chatRoom);
 
-        return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName, ChatRoomInfoResponseDto.fromChatRoom(chatRoom), DateTimeUtils.nowFromZone());
+        return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName);
     }
 
 
@@ -558,11 +558,11 @@ public class ChatRoomService {
         return "요청처리에 성공했습니다";
     }
 
-    public ChatRoomBeforeMessagesResponseDto getBeforeMessages(String channelId, ZonedDateTime before) {
+    public ChatRoomBeforeMessagesResponseDto getBeforeMessages(String channelId) {
         List<Message> messages = messageRepository.findByChannelId(channelId);
 
         List<Message> filteredMessages = messages.stream()
-                .filter(message -> message.getCreatedAt().isBefore(before.toLocalDateTime())) // createdAt이 before보다 이전인 메시지만
+                .filter(message -> message.getCreatedAt().isBefore(DateTimeUtils.nowFromZone())) // createdAt이 get요청 시각보다 이전인 메시지만
                 .toList();
 
         return new ChatRoomBeforeMessagesResponseDto(ChatRoomMessages.fromMessagesByChannelId(filteredMessages, channelId));

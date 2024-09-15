@@ -208,11 +208,9 @@ public class ChatController {
     public ResponseEntity<CommonResponseDto<ChatRoomBeforeMessagesResponseDto>> getBeforeMessages(
             @RequestParam("channelId")
             @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-                    message = "Invalid UUID format") String channelId,
-            @RequestParam("before")
-            ZonedDateTime before
+                    message = "Invalid UUID format") String channelId
     ) {
-        ChatRoomBeforeMessagesResponseDto responseDto = chatRoomService.getBeforeMessages(channelId, before);
+        ChatRoomBeforeMessagesResponseDto responseDto = chatRoomService.getBeforeMessages(channelId);
 
         return new ResponseEntity<>(CommonResponseDto.success(responseDto), HttpStatus.OK);
     }
