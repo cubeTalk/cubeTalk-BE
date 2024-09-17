@@ -28,9 +28,9 @@ public class ValidChatRoomCreateValidator implements ConstraintValidator<ValidCh
             isValid = false;
         }
 
-        if ((dto.getMaxParticipants() % 2 != 0 || dto.getMaxParticipants() < 6) && "찬반".equals(dto.getChatMode())) {
+        if ((dto.getMaxParticipants() % 2 != 0 || dto.getMaxParticipants() < 2) && "찬반".equals(dto.getChatMode())) {
             context.disableDefaultConstraintViolation();
-            context.buildConstraintViolationWithTemplate("찬반 토론일 경우, 사용자 수(수용인원)은 짝수면서 최소 6명이상이어야합니다.")
+            context.buildConstraintViolationWithTemplate("찬반 토론일 경우, 사용자 수(수용인원)은 짝수면서 최소 2명이상이어야합니다.")
                     .addPropertyNode("maxParticipants").addConstraintViolation();
             isValid = false;
         }
