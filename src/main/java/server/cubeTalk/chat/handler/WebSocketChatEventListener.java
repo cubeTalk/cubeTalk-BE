@@ -56,7 +56,7 @@ public class WebSocketChatEventListener {
                 /* 메인 채팅방에 입장하는 경우 */
                 if (chatRoom.getChannelId().equals(channelId)) {
                     String message = nickName + "님이 입장하셨습니다.";
-                    ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto(message);
+                    ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER",message);
                     String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
                     messageSendingOperations.convertAndSend(destination, jsonStringEnterMessage);
                 }
@@ -68,7 +68,7 @@ public class WebSocketChatEventListener {
                             .map(SubChatRoom::getSubChannelId)
                             .orElseThrow(() -> new IllegalArgumentException("서브 채팅방이 존재하지 않습니다."));
                     String message = nickName + "님이 입장하셨습니다.";
-                    ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto(message);
+                    ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER",message);
                     String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
                     messageSendingOperations.convertAndSend(destination, jsonStringEnterMessage);
                 }
