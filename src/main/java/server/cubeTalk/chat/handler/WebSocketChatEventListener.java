@@ -44,7 +44,7 @@ public class WebSocketChatEventListener {
             String destination = headerAccessor.getDestination();
 
             if (destination.startsWith("/topic/chat.")) {
-                log.info("채팅 구독");
+
                 String channelId = destination.substring("/topic/chat.".length());
                 String nickName = headerAccessor.getFirstNativeHeader("nickName");
                 String id = headerAccessor.getFirstNativeHeader("id");
@@ -52,7 +52,7 @@ public class WebSocketChatEventListener {
                 if (nickName == null || id == null) throw new IllegalArgumentException("헤더값이 null입니다");
                 ChatRoom chatRoom = chatRoomRepository.findById(id)
                         .orElseThrow(()-> new IllegalArgumentException("해댕 채팅방이 존재하지않습니다."));
-
+                log.info("채팅 구독");
                 /* 메인 채팅방에 입장하는 경우 */
                 if (chatRoom.getChannelId().equals(channelId)) {
                     String message = nickName + "님이 입장하셨습니다.";
