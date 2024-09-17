@@ -499,7 +499,7 @@ public class ChatRoomService {
         int spectatorCount = (int) chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals(SPECTATOR))
                 .count();
 
-        return new ChatRoomParticipantsCountDto(chatRoom.getMaxParticipants(), chatRoom.getParticipants().size(), supportCount, oppositeCount, spectatorCount);
+        return new ChatRoomParticipantsCountDto(chatRoom.getMaxParticipants(), supportCount, oppositeCount, spectatorCount);
     }
 
     /* 채팅방 정보 */
@@ -787,12 +787,30 @@ public class ChatRoomService {
 
         // 상태별로 필터링된 채팅방 목록 가져오기
         Page<ChatRoom> chatRooms;
-        if (status.equals("STARTED")) {
-            chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "STARTED", pageable);
-        } else if (status.equals("CREATED")) {
-            chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "CREATED", pageable);
+//        if (status.equals("STARTED")) {
+//            chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "STARTED", pageable);
+//        } else if (status.equals("CREATED")) {
+//            chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "CREATED", pageable);
+//        } else {
+//            chatRooms = chatRoomRepository.findByChatMode(mode, pageable);
+//        }
+        // mode가 null 또는 빈 문자열일 경우 모든 채팅방 필터링
+        if (mode == null || mode.isEmpty()) {
+            if (status.equals("STARTED")) {
+                chatRooms = chatRoomRepository.findByChatStatus("STARTED", pageable);
+            } else if (status.equals("CREATED")) {
+                chatRooms = chatRoomRepository.findByChatStatus("CREATED", pageable);
+            } else {
+                chatRooms = chatRoomRepository.findAll(pageable); // 모든 채팅방
+            }
         } else {
-            chatRooms = chatRoomRepository.findByChatMode(mode, pageable);
+            if (status.equals("STARTED")) {
+                chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "STARTED", pageable);
+            } else if (status.equals("CREATED")) {
+                chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "CREATED", pageable);
+            } else {
+                chatRooms = chatRoomRepository.findByChatMode(mode, pageable);
+            }
         }
 
         // 페이지 결과를 DTO로 변환
@@ -809,6 +827,13 @@ public class ChatRoomService {
                 .flatMap(p -> Optional.ofNullable(p.getNickName())) // null일 수 있는 nickName 처리
                 .orElse("Unknown");
 
+        int supportCount = (int) chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals("찬성"))
+                .count();
+        int oppositeCount = (int) chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals("반대"))
+                .count();
+
+        int currentParticipantsCount = supportCount + oppositeCount;
+
         return new ChatRoomFilterListResponseDto(
                 chatRoom.getId(),
                 chatRoom.getChatMode(),
@@ -817,7 +842,7 @@ public class ChatRoomService {
                 chatRoom.getChatDuration(),
                 ownerNickName, // 필터링된 소유자의 닉네임 사용
                 chatRoom.getMaxParticipants(),
-                chatRoom.getParticipants().size(),
+                currentParticipantsCount,
                 chatRoom.getCreatedAt(),
                 chatRoom.getUpdatedAt()
         );
