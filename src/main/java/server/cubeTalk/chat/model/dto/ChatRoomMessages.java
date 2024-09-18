@@ -20,7 +20,7 @@ public class ChatRoomMessages {
     private String sender;
     private Object message;
     private String replyToMessageId;
-    private LocalDateTime severTimeStamp;
+    private LocalDateTime serverTimeStamp;
 
     public static List<ChatRoomMessages> fromMessagesByChannelId(List<Message> messages, String channelId) {
         return messages.stream()
@@ -31,7 +31,7 @@ public class ChatRoomMessages {
                         .sender(message.getSender())
                         .message(message.getMessage())
                         .replyToMessageId(message.getReplyToMessageId())
-                        .severTimeStamp(message.getCreatedAt())
+                        .serverTimeStamp(message.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
     }
