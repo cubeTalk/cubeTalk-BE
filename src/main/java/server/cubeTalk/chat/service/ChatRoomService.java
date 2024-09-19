@@ -645,18 +645,19 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomSendMessageRequestDto.getId())
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
 
-        final String main = "MAIN";
+//        final String main = "MAIN";
 
         // 메인 채널 검증
-        if (chatRoomSendMessageRequestDto.getType().equals(main)) {
-            if (!chatRoom.getChannelId().equals(channelId)) {
-                webSocketService.sendErrorMessage("채팅 메시지 예외", "메인 채팅방이 아닙니다. channelId와 type을 다시 확인해주세요.");
-                throw new IllegalArgumentException("메인 채팅방이 아닙니다.");
-            }
-        } else {
-            // 서브 채널 검증
-            validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
-        }
+//        if (chatRoomSendMessageRequestDto.getType().equals(main)) {
+//            if (!chatRoom.getChannelId().equals(channelId)) {
+//                webSocketService.sendErrorMessage("채팅 메시지 예외", "메인 채팅방이 아닙니다. channelId와 type을 다시 확인해주세요.");
+//                throw new IllegalArgumentException("메인 채팅방이 아닙니다.");
+//            }
+//        } else {
+//            // 서브 채널 검증
+//            validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
+//        }
+        validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
 
         List<Participant> participants = chatRoom.getParticipants();
         if (participants == null || participants.isEmpty()) {
