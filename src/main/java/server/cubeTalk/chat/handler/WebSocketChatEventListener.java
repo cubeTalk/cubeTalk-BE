@@ -15,6 +15,7 @@ import server.cubeTalk.chat.model.dto.ChatRoomCommonMessageResponseDto;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
+import server.cubeTalk.common.dto.CommonResponseDto;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class WebSocketChatEventListener {
 
     private final SimpMessageSendingOperations messageSendingOperations;
     private final ChatRoomRepository chatRoomRepository;
+    private final SubscriptionManager subscriptionManager;
 
     @EventListener
     public void handleWebSocketConnectListener (SessionConnectedEvent event) {
@@ -33,7 +35,11 @@ public class WebSocketChatEventListener {
     }
 
     @EventListener
-    public void handleWebSocketDisconnectListner(SessionDisconnectEvent event) {}
+    public void handleWebSocketDisconnectListner(SessionDisconnectEvent event) {
+        String sessionId = StompHeaderAccessor.wrap(event.getMessage()).getSessionId();
+        // 세션이 끊길 때 해당 세션의 모든 구독 상태 제거
+        subscriptionManager.removeSession(sessionId);
+    }
 
     @EventListener
     public void handleSessionSubscribeEvent(SessionSubscribeEvent event) {
@@ -47,12 +53,14 @@ public class WebSocketChatEventListener {
 
                 String channelId = destination.substring("/topic/chat.".length());
                 String nickName = headerAccessor.getFirstNativeHeader("nickName");
-                String id = headerAccessor.getFirstNativeHeader("id");
+                String id = headerAccessor.getFirstNativeHeader("chatRoomId");
+                String sessionId = headerAccessor.getSessionId();
 
                 if (nickName == null || id == null) throw new IllegalArgumentException("헤더값이 null입니다");
                 ChatRoom chatRoom = chatRoomRepository.findById(id)
                         .orElseThrow(()-> new IllegalArgumentException("해댕 채팅방이 존재하지않습니다."));
                 log.info("채팅 구독");
+                subscriptionManager.addSubscription(sessionId, channelId);
                 /* 메인 채팅방에 입장하는 경우 */
                 if (chatRoom.getChannelId().equals(channelId)) {
                     String message = nickName + "님이 입장하셨습니다.";
@@ -67,6 +75,7 @@ public class WebSocketChatEventListener {
                             .findFirst()
                             .map(SubChatRoom::getSubChannelId)
                             .orElseThrow(() -> new IllegalArgumentException("서브 채팅방이 존재하지 않습니다."));
+                    subscriptionManager.addSubscription(sessionId, channelId);
                     String message = nickName + "님이 입장하셨습니다.";
                     ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER",message);
                     String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
@@ -77,9 +86,21 @@ public class WebSocketChatEventListener {
                 /* 채팅방 목적지 외 처리 */
             }
 
-    }
+        } catch (IllegalArgumentException e) {
+            log.error("구독 실패: " + e.getMessage());
+            messageSendingOperations.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error("구독실패",e.getMessage()));
+        }
         catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @EventListener
+    public void  handleSessionUnSubscribeEvent(SessionSubscribeEvent event) {
+        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+        String sessionId = headerAccessor.getSessionId();
+        String id = headerAccessor.getFirstNativeHeader("channelId");
+        subscriptionManager.removeSubscription(sessionId,id);
+
     }
 }
