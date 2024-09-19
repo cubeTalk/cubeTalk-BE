@@ -49,6 +49,7 @@ public class MessageController {
             throw new IllegalArgumentException("구독되지 않은 채널에 메시지를 발행할 수 없습니다.");
         }
         log.info("메시지 받기 ");
+        subscriptionManager.printSubscriptions();
         ChatRoomSendMessageResponseDto responseDto = chatRoomService.sendChatMessage(channelId,RequestDto);
 
         return responseDto;
@@ -61,7 +62,13 @@ public class MessageController {
             @Pattern(regexp = "^[a-fA-F0-9]{24}$",
                     message = "Invalid UUID format")
             String id,
-            @Payload @Valid ChatRoomReadyStatusRequestDto chatRoomReadyStatusRequestDto) {
+            @Payload @Valid ChatRoomReadyStatusRequestDto chatRoomReadyStatusRequestDto, SimpMessageHeaderAccessor headerAccessor) {
+        String sessionId = headerAccessor.getSessionId();
+
+        // 구독 상태 검증
+        if (!subscriptionManager.isSubscribed(sessionId, id + ".participants.list")) {
+            throw new IllegalArgumentException("구독되지 않은 채널에 메시지를 발행할 수 없습니다.");
+        }
 
         List<ChatRoomParticipantsListResponseDto> responseDto = chatRoomService.sendParticipantsList(id,chatRoomReadyStatusRequestDto);
 
@@ -74,7 +81,14 @@ public class MessageController {
             @Pattern(regexp = "^[a-fA-F0-9]{24}$",
                     message = "Invalid UUID format")
             String id,
-            @Payload @Valid ChatRoomVoteRequestDto chatRoomVotesRequestDto) {
+            @Payload @Valid ChatRoomVoteRequestDto chatRoomVotesRequestDto, SimpMessageHeaderAccessor headerAccessor) {
+        String sessionId = headerAccessor.getSessionId();
+
+        // 구독 상태 검증
+        if (!subscriptionManager.isSubscribed(sessionId, "progress." +id )) {
+            throw new IllegalArgumentException("구독되지 않은 채널에 메시지를 발행할 수 없습니다.");
+        }
+        subscriptionManager.printSubscriptions();
 
         chatRoomService.voteChat(id,chatRoomVotesRequestDto);
     }
