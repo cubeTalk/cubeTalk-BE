@@ -239,10 +239,10 @@ public class ChatController {
             @PathVariable("id")
             @Pattern(regexp = "^[a-fA-F0-9]{24}$",
                     message = "Invalid UUID format") String id,
-            @Valid @RequestBody ChatRoomStartRequestDto chatRoomStartRequestDto, SimpMessageHeaderAccessor headerAccessor
+            @Valid @RequestBody ChatRoomStartRequestDto chatRoomStartRequestDto
             ) {
 
-        String message = chatRoomService.startChat(id,chatRoomStartRequestDto, headerAccessor);
+        String message = chatRoomService.startChat(id,chatRoomStartRequestDto);
 
         return new ResponseEntity<>(CommonResponseDto.CommonResponseSuccessDto.success(200,message), HttpStatus.OK);
     }
