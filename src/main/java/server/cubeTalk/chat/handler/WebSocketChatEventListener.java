@@ -48,13 +48,13 @@ public class WebSocketChatEventListener {
             StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
             System.out.println(headerAccessor.getMessageHeaders());
             String destination = headerAccessor.getDestination();
+            String sessionId = headerAccessor.getSessionId();
 
             if (destination.startsWith("/topic/chat.")) {
 
                 String channelId = destination.substring("/topic/chat.".length());
                 String nickName = headerAccessor.getFirstNativeHeader("nickName");
                 String id = headerAccessor.getFirstNativeHeader("chatRoomId");
-                String sessionId = headerAccessor.getSessionId();
 
                 if (nickName == null || id == null) throw new IllegalArgumentException("헤더값이 null입니다");
                 ChatRoom chatRoom = chatRoomRepository.findById(id)
@@ -84,6 +84,22 @@ public class WebSocketChatEventListener {
             }
             else {
                 /* 채팅방 목적지 외 처리 */
+                String channelId = destination.substring("/topic/".length());
+                log.info("채팅방 외 구독");
+                if (destination.startsWith("/topic/progress.")) {
+                    String id = destination.substring("/topic/progress.".length());
+                    chatRoomRepository.findById(id)
+                            .orElseThrow(() -> new IllegalArgumentException("progress.{id}에 해당하는 해당 채팅방이 존재하지 않습니다."));
+                    subscriptionManager.addSubscription(sessionId, channelId);
+                } else if (destination.startsWith("/topic/error")) {
+                    subscriptionManager.addSubscription(sessionId, channelId);
+                } else {
+                    String id = destination.substring("/topic/".length(), destination.indexOf(".participants.list"));
+                    chatRoomRepository.findById(id)
+                            .orElseThrow(() -> new IllegalArgumentException("참여자 목록 구독에 해당하는 해당 채팅방이 존재하지 않습니다."));
+                    subscriptionManager.addSubscription(sessionId, channelId);
+                }
+
             }
 
         } catch (IllegalArgumentException e) {
@@ -92,6 +108,7 @@ public class WebSocketChatEventListener {
         }
         catch (Exception e) {
             e.printStackTrace();
+
         }
     }
 

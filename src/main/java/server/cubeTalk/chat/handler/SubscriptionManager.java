@@ -33,5 +33,12 @@ public class SubscriptionManager {
     public void removeSession(String sessionId) {
         subscriptionMap.remove(sessionId);
     }
+
+
+    public void printSubscriptions() {
+        subscriptionMap.forEach((sessionId, channels) ->
+                System.out.println("Session: " + sessionId + " -> Channels: " + channels)
+        );
+    }
 }
 

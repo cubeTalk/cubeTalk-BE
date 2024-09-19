@@ -2,8 +2,10 @@ package server.cubeTalk.chat.service;
 
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import server.cubeTalk.chat.handler.SubscriptionManager;
 import server.cubeTalk.chat.model.dto.ChatRoomProgressResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomVoteResultResponseDto;
 import server.cubeTalk.chat.model.entity.ChatRoom;
@@ -21,14 +23,23 @@ import java.util.concurrent.atomic.AtomicLong;
 public class WebSocketService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatRoomRepository chatRoomRepository;
+    private final SubscriptionManager subscriptionManager;
     private boolean isVoteEnd = false;
     public void sendErrorMessage(String title, String errorMessage) {
+
         messagingTemplate.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error(title,errorMessage));
     }
 
     /* 채팅방 진행 */
-    public void progressChatRoom(ChatRoom chatRoom) {
+    public void progressChatRoom(ChatRoom chatRoom, SimpMessageHeaderAccessor headerAccessor) {
+        String sessionId = headerAccessor.getSessionId();
         String id = chatRoom.getId();
+
+        // 구독 상태 검증
+        if (!subscriptionManager.isSubscribed(sessionId, "progress." +id )) {
+            throw new IllegalArgumentException("구독되지 않은 채널에 메시지를 발행할 수 없어 채팅방 진행이 어렵습니다.");
+        }
+
         DebateSettings debateSettings = chatRoom.getDebateSettings();
         double chatDuration = chatRoom.getChatDuration();
 
