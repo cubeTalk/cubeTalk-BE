@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import server.cubeTalk.chat.model.dto.*;
@@ -238,10 +239,10 @@ public class ChatController {
             @PathVariable("id")
             @Pattern(regexp = "^[a-fA-F0-9]{24}$",
                     message = "Invalid UUID format") String id,
-            @Valid @RequestBody ChatRoomStartRequestDto chatRoomStartRequestDto
+            @Valid @RequestBody ChatRoomStartRequestDto chatRoomStartRequestDto, SimpMessageHeaderAccessor headerAccessor
             ) {
 
-        String message = chatRoomService.startChat(id,chatRoomStartRequestDto);
+        String message = chatRoomService.startChat(id,chatRoomStartRequestDto, headerAccessor);
 
         return new ResponseEntity<>(CommonResponseDto.CommonResponseSuccessDto.success(200,message), HttpStatus.OK);
     }

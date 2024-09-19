@@ -26,6 +26,7 @@ public class WebSocketService {
     private final SubscriptionManager subscriptionManager;
     private boolean isVoteEnd = false;
     public void sendErrorMessage(String title, String errorMessage) {
+
         messagingTemplate.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error(title,errorMessage));
     }
 

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import server.cubeTalk.chat.model.dto.*;
@@ -699,7 +700,7 @@ public class ChatRoomService {
 
     /* 채팅방 시작 */
     @Transactional
-    public String startChat(String id, ChatRoomStartRequestDto chatRoomStartRequestDto) {
+    public String startChat(String id, ChatRoomStartRequestDto chatRoomStartRequestDto, SimpMessageHeaderAccessor headerAccessor) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
@@ -717,7 +718,7 @@ public class ChatRoomService {
                 .build();
 
         chatRoomRepository.save(updatedChatRoom);
-        webSocketService.progressChatRoom(updatedChatRoom);
+        webSocketService.progressChatRoom(updatedChatRoom, headerAccessor);
 
         return "채팅방 시작 완료";
     }
