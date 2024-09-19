@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import server.cubeTalk.chat.handler.SubscriptionManager;
 import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.model.entity.*;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
@@ -18,9 +19,6 @@ import server.cubeTalk.common.util.RandomNicknameGenerator;
 import server.cubeTalk.member.model.entity.Member;
 import server.cubeTalk.member.repository.MemberRepository;
 
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,6 +30,7 @@ public class ChatRoomService {
     private final MemberRepository memberRepository;
     private final MessageRepository messageRepository;
     private final WebSocketService webSocketService;
+    private final SubscriptionManager subscriptionManager;
 
     /* 채팅방 생성 */
     public ChatRoomCreateResponseDto createChatRoom(ChatRoomCreateRequestDto requestDto) {
@@ -708,7 +707,7 @@ public class ChatRoomService {
         if (!chatRoom.getOwnerId().equals(chatRoomStartRequestDto.getOwnerId()))
             throw new IllegalArgumentException("방장만 시작할 수 있습니다.");
 
-        boolean isPendingParticipant = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getStatus().equals("PENDING"));
+        boolean isPendingParticipant = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getStatus().equals("READY"));
 
         if (isPendingParticipant) {
             throw new IllegalArgumentException("참가자 모두 준비상태여야 시작할 수 있습니다.");
@@ -726,7 +725,19 @@ public class ChatRoomService {
                 .build();
 
         chatRoomRepository.save(updatedChatRoom);
-        webSocketService.progressChatRoom(updatedChatRoom);
+
+        List<String> participantNickNames = updatedChatRoom.getParticipants()
+                .stream()
+                .map(Participant::getNickName)
+                .collect(Collectors.toList());
+
+        boolean isParticipant = subscriptionManager.isNickNameInList(participantNickNames);
+
+        if (isParticipant) {
+            webSocketService.progressChatRoom(updatedChatRoom);
+        } else {
+            throw new IllegalArgumentException("채팅방에 참가중이지 않기 때문에 채팅방 진행이 어렵습니다.(채팅방 구독 실패)");
+        }
 
         return "채팅방 시작 완료";
     }

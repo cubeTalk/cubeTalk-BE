@@ -60,7 +60,7 @@ public class WebSocketChatEventListener {
                 ChatRoom chatRoom = chatRoomRepository.findById(id)
                         .orElseThrow(()-> new IllegalArgumentException("해댕 채팅방이 존재하지않습니다."));
                 log.info("채팅 구독");
-                subscriptionManager.addSubscription(sessionId, channelId);
+                subscriptionManager.addSubscription(sessionId, channelId, nickName);
                 /* 메인 채팅방에 입장하는 경우 */
                 if (chatRoom.getChannelId().equals(channelId)) {
                     String message = nickName + "님이 입장하셨습니다.";
@@ -75,7 +75,7 @@ public class WebSocketChatEventListener {
                             .findFirst()
                             .map(SubChatRoom::getSubChannelId)
                             .orElseThrow(() -> new IllegalArgumentException("서브 채팅방이 존재하지 않습니다."));
-                    subscriptionManager.addSubscription(sessionId, channelId);
+                    subscriptionManager.addSubscription(sessionId, channelId, nickName);
                     String message = nickName + "님이 입장하셨습니다.";
                     ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER",message);
                     String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
