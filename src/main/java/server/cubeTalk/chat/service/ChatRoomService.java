@@ -178,6 +178,8 @@ public class ChatRoomService {
                 .orElseThrow(() -> new IllegalArgumentException("해당채팅방이 존재하지 않습니다."));
 
         for (Participant participant : chatRoom.getParticipants()) {
+//            if (participant.getNickName() == null) {
+//
             if (participant.getNickName().equals(nickName)) {
                 return false; // 존재하면 false 반환
             }
@@ -234,6 +236,7 @@ public class ChatRoomService {
                                 .memberId(memberId)
                                 .role(chatRoomTeamChangeRequestDto.getRole())
                                 .status(participant.getStatus())
+                                .nickName(participant.getNickName())
                                 .build();
                     }
                     return participant;
