@@ -700,7 +700,7 @@ public class ChatRoomService {
 
     /* 채팅방 시작 */
     @Transactional
-    public String startChat(String id, ChatRoomStartRequestDto chatRoomStartRequestDto, SimpMessageHeaderAccessor headerAccessor) {
+    public String startChat(String id, ChatRoomStartRequestDto chatRoomStartRequestDto) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
@@ -713,12 +713,20 @@ public class ChatRoomService {
         if (isPendingParticipant) {
             throw new IllegalArgumentException("참가자 모두 준비상태여야 시작할 수 있습니다.");
         }
+
+        if (chatRoom.getChatMode().equals("찬반")) {
+            long support = chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals("찬성")).count();
+            long opposite = chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals("반대")).count();
+
+            if (support < 1 || opposite < 1) throw new IllegalArgumentException("찬성, 반대 측이 최소 1명이상이어야 시작할 수 있습니다.");
+        }
+
         ChatRoom updatedChatRoom = chatRoom.toBuilder()
                 .chatStatus("STARTED")
                 .build();
 
         chatRoomRepository.save(updatedChatRoom);
-        webSocketService.progressChatRoom(updatedChatRoom, headerAccessor);
+        webSocketService.progressChatRoom(updatedChatRoom);
 
         return "채팅방 시작 완료";
     }
@@ -779,7 +787,7 @@ public class ChatRoomService {
 
         // 정렬 기준에 따른 Sort 객체 생성
         if (sort.equalsIgnoreCase("participants")) {
-            sortCriteria = Sort.by(direction, "participants.size"); // 참가자 수 기준으로 정렬
+            sortCriteria = Sort.by(direction, "maxParticipants"); // 참가자 수 기준으로 정렬
         } else {
             sortCriteria = Sort.by(direction, "createdAt"); // 기본적으로 생성일 기준으로 정렬
         }
@@ -788,13 +796,7 @@ public class ChatRoomService {
 
         // 상태별로 필터링된 채팅방 목록 가져오기
         Page<ChatRoom> chatRooms;
-//        if (status.equals("STARTED")) {
-//            chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "STARTED", pageable);
-//        } else if (status.equals("CREATED")) {
-//            chatRooms = chatRoomRepository.findByChatModeAndChatStatus(mode, "CREATED", pageable);
-//        } else {
-//            chatRooms = chatRoomRepository.findByChatMode(mode, pageable);
-//        }
+
         // mode가 null 또는 빈 문자열일 경우 모든 채팅방 필터링
         if (mode == null || mode.isEmpty()) {
             if (status.equals("STARTED")) {

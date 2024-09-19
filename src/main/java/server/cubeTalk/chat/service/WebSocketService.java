@@ -31,15 +31,9 @@ public class WebSocketService {
     }
 
     /* 채팅방 진행 */
-    public void progressChatRoom(ChatRoom chatRoom, SimpMessageHeaderAccessor headerAccessor) {
-        String sessionId = headerAccessor.getSessionId();
+    public void progressChatRoom(ChatRoom chatRoom) {
+
         String id = chatRoom.getId();
-
-        // 구독 상태 검증
-        if (!subscriptionManager.isSubscribed(sessionId, "progress." +id )) {
-            throw new IllegalArgumentException("구독되지 않은 채널에 메시지를 발행할 수 없어 채팅방 진행이 어렵습니다.");
-        }
-
         DebateSettings debateSettings = chatRoom.getDebateSettings();
         double chatDuration = chatRoom.getChatDuration();
 
