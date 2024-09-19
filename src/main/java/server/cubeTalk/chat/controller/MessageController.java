@@ -12,6 +12,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
+import server.cubeTalk.chat.handler.SubscriptionManager;
 import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 import server.cubeTalk.chat.service.ChatRoomService;
@@ -26,6 +27,7 @@ import java.util.List;
 public class MessageController {
 
     private final ChatRoomService chatRoomService;
+    private final SubscriptionManager subscriptionManager;
 
     /*
       /pub/메세지 발행
@@ -40,11 +42,16 @@ public class MessageController {
                     message = "Invalid UUID format") String channelId,
             @Payload @Valid ChatRoomSendMessageRequestDto RequestDto, SimpMessageHeaderAccessor headerAccessor) {
         headerAccessor.getSessionAttributes().put("nickName", RequestDto.getSender());
+        String sessionId = headerAccessor.getSessionId();
+
+        // 구독 상태 검증
+        if (!subscriptionManager.isSubscribed(sessionId, channelId)) {
+            throw new IllegalArgumentException("구독되지 않은 채널에 메시지를 발행할 수 없습니다.");
+        }
         log.info("메시지 받기 ");
         ChatRoomSendMessageResponseDto responseDto = chatRoomService.sendChatMessage(channelId,RequestDto);
 
         return responseDto;
-
     }
 
     @MessageMapping("/{id}/ready")
