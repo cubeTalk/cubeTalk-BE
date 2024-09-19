@@ -16,7 +16,7 @@ public class ChatRoomSendMessageResponseDto {
     private String sender;
     private String message;
     private String replyToMessageId;
-    private LocalDateTime serverTimestamp;
+    private LocalDateTime serverTimeStamp;
 
 
 
