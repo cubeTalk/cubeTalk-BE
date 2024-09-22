@@ -20,4 +20,9 @@ springdoc:
   default-produces-media-type: application/json
   writer-with-default-pretty-printer: true
   model-and-view-allowed: true
+server:
+  servlet:
+    session:
+      timeout: 30s  # 세션 타임아웃 설정 (30초)
+
 

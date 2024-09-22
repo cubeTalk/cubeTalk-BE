@@ -31,6 +31,7 @@ public class ChatRoomService {
     private final MessageRepository messageRepository;
     private final WebSocketService webSocketService;
     private final SubscriptionManager subscriptionManager;
+    private boolean isRollBack = false;
 
     /* 채팅방 생성 */
     public ChatRoomCreateResponseDto createChatRoom(ChatRoomCreateRequestDto requestDto) {
@@ -88,6 +89,9 @@ public class ChatRoomService {
 
     /* 채팅방 참가 */
     public ChatRoomJoinResponseDto joinChatRoom(String id, ChatRoomJoinRequestDto chatRoomJoinRequestDto) {
+        if (isRollBack) {
+            throw new IllegalArgumentException("롤백처리 중이기 때문에 지금은 참가할 수 없습니다.");
+        }
 
         String subchannelId = null;
         String memberId = UUID.randomUUID().toString();
@@ -190,6 +194,9 @@ public class ChatRoomService {
 
     /* 팀 변경 */
     public ChatRoomTeamChangeResponseDto changeTeam(String id, String memberId, ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
+        if (isRollBack) {
+            throw new IllegalArgumentException("현재 롤백 처리 중이기 때문에 변경이 불가능합니다.");
+        }
 
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
@@ -381,14 +388,17 @@ public class ChatRoomService {
             if (ChatRoomSubscriptionFailureDto.getType().equals(ENTER_FALIED)) {
                 validateRole(participant.getRole(), originRole, "참가자의 역할이 변경하려던 역할과 일치하지 않습니다.");
                 rollbackJoin(chatRoom, memberId, originRole);
+                isRollBack = true;
             } else if (ChatRoomSubscriptionFailureDto.getType().equals(TEAM_CHANGE_FALIED)) {   /* 팀 변경 실패시 롤백 처리 */
                 String newRole = ChatRoomSubscriptionFailureDto.getNewRole()
                         .orElseThrow(() -> new IllegalArgumentException("newRole 필드가 존재하지 않습니다."));
                 validateRole(participant.getRole(), newRole, "참가자의 역할이 변경하려던 역할과 일치하지 않습니다.");
                 rollbackTeamChange(chatRoom, memberId, originRole, newRole);
+                isRollBack = true;
             }
 
             /* 롤백 완료 메시지 반환 */
+            isRollBack = false;
             return "롤백완료";
 
         } catch (Exception e) {
@@ -657,7 +667,10 @@ public class ChatRoomService {
 //            // 서브 채널 검증
 //            validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
 //        }
-        validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
+//        validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
+        if (!chatRoom.getChannelId().equals(channelId)) {
+            validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
+        }
 
         List<Participant> participants = chatRoom.getParticipants();
         if (participants == null || participants.isEmpty()) {
