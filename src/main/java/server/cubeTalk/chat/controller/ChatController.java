@@ -269,8 +269,16 @@ public class ChatController {
         return new ResponseEntity<>(CommonResponseDto.success(responseDtoPage), HttpStatus.OK);
     }
 
-
-
-
+    @GetMapping("/test")
+    @Operation(summary = "배포 test", description = "배포테스트용")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
+            @ApiResponse(responseCode = "400", description = "fail",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<String> getDeploy() {
+        return new ResponseEntity<>("성공", HttpStatus.OK);
+    }
 
 }
