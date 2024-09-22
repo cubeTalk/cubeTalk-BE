@@ -269,8 +269,4 @@ public class ChatController {
         return new ResponseEntity<>(CommonResponseDto.success(responseDtoPage), HttpStatus.OK);
     }
 
-
-
-
-
 }

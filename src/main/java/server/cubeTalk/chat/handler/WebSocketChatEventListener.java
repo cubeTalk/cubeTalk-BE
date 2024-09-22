@@ -38,6 +38,8 @@ public class WebSocketChatEventListener {
     public void handleWebSocketDisconnectListner(SessionDisconnectEvent event) {
         String sessionId = StompHeaderAccessor.wrap(event.getMessage()).getSessionId();
         // 세션이 끊길 때 해당 세션의 모든 구독 상태 제거
+        // 채팅인 경우 해당 세션 id, nickname을 얻어서 관련 db 제거
+
         subscriptionManager.removeSession(sessionId);
     }
 
@@ -64,10 +66,10 @@ public class WebSocketChatEventListener {
                     subscriptionManager.addSubscription(sessionId, channelId, nickName);
                     /* 메인 채팅방에 입장하는 경우 */
                     if (chatRoom.getChannelId().equals(channelId)) {
-                        String message = nickName + "님이 입장하셨습니다.";
-                        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
-                        String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
-                        messageSendingOperations.convertAndSend(destination, jsonStringEnterMessage);
+//                        String message = nickName + "님이 입장하셨습니다.";
+//                        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
+//                        String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
+//                        messageSendingOperations.convertAndSend(destination, jsonStringEnterMessage);
                     }
                     /* 서브 채팅방에 입장하는 경우 */
                     else {
@@ -76,11 +78,10 @@ public class WebSocketChatEventListener {
                                 .findFirst()
                                 .map(SubChatRoom::getSubChannelId)
                                 .orElseThrow(() -> new IllegalArgumentException("서브 채팅방이 존재하지 않습니다."));
-                        subscriptionManager.addSubscription(sessionId, channelId, nickName);
-                        String message = nickName + "님이 입장하셨습니다.";
-                        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
-                        String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
-                        messageSendingOperations.convertAndSend(destination, jsonStringEnterMessage);
+//                        String message = nickName + "님이 입장하셨습니다.";
+//                        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
+//                        String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
+//                        messageSendingOperations.convertAndSend(destination, jsonStringEnterMessage);
                     }
                 }
 
