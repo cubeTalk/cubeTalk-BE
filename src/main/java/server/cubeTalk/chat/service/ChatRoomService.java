@@ -668,6 +668,9 @@ public class ChatRoomService {
 //            validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
 //        }
 //        validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
+        if (!chatRoom.getChannelId().equals(channelId)) {
+            validateSubChannel(chatRoom, channelId, chatRoomSendMessageRequestDto.getType());
+        }
 
         List<Participant> participants = chatRoom.getParticipants();
         if (participants == null || participants.isEmpty()) {
