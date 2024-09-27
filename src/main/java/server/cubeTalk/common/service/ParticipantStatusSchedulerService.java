@@ -5,12 +5,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import server.cubeTalk.chat.model.dto.ChatRoomParticipantsListResponseDto;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.Participant;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
+import server.cubeTalk.common.dto.CommonResponseDto;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -113,13 +116,25 @@ public class ParticipantStatusSchedulerService {
                         }
                     }
 
-                    // 퇴출시 참가자 목록 업데이트 후 전송
+
                     messageSendingOperations.convertAndSend("/topic/chat."+chatRoom.getChannelId(), disconnectedNickName + "님이 나갔습니다.");
 
                     chatRoomRepository.save(chatRoom);
 
 
                 }
+
+                // 퇴출시 참가자 목록 업데이트 후 전송
+                List<ChatRoomParticipantsListResponseDto> responseDto = chatRoom.getParticipants().stream()
+                        .map(participant -> new ChatRoomParticipantsListResponseDto(
+                                participant.getNickName(),
+                                participant.getRole(),
+                                participant.getStatus()
+                        ))
+                        .collect(Collectors.toList());
+
+                messageSendingOperations.convertAndSend("/topic/"+chatRoom.getId() + ".participants.list", CommonResponseDto.success(responseDto));
+
             }
         }
     }

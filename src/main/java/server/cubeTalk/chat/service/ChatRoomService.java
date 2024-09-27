@@ -180,6 +180,8 @@ public class ChatRoomService {
         memberRepository.save(member);
         chatRoomRepository.save(chatRoom);
 
+        webSocketService.sendParticiPantsList(chatRoom);
+
         return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName);
     }
 
@@ -314,6 +316,8 @@ public class ChatRoomService {
         }
 
         chatRoomRepository.save(updatedChatRoom);
+
+        webSocketService.sendParticiPantsList(updatedChatRoom);
 
         return new ChatRoomTeamChangeResponseDto(id, chatRoom.getChannelId(), changeSubChannelId[0], chatRoomTeamChangeRequestDto.getSubChannelId());
     }
@@ -649,7 +653,6 @@ public class ChatRoomService {
 
         return chatRoom.getParticipants().stream()
                 .map(participant -> new ChatRoomParticipantsListResponseDto(
-                        chatRoom.getChatMode(),
                         participant.getNickName(),
                         participant.getRole(),
                         participant.getStatus()
