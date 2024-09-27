@@ -8,7 +8,6 @@ import lombok.Getter;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ChatRoomParticipantsListResponseDto {
-    private String type;
     private String nickName;
     private String role;
     private String status;

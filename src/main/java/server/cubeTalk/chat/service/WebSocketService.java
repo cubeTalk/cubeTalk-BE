@@ -6,6 +6,7 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import server.cubeTalk.chat.handler.SubscriptionManager;
+import server.cubeTalk.chat.model.dto.ChatRoomParticipantsListResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomProgressResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomVoteResultResponseDto;
 import server.cubeTalk.chat.model.entity.ChatRoom;
@@ -15,10 +16,12 @@ import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -233,6 +236,19 @@ public class WebSocketService {
             throw new IllegalArgumentException("이미 끝난 채팅방입니다.");
         }
         chatRoomRepository.save(chatRoom);
+
+    }
+
+    public void sendParticiPantsList(ChatRoom chatRoom) {
+        List<ChatRoomParticipantsListResponseDto> responseDto = chatRoom.getParticipants().stream()
+                .map(participant -> new ChatRoomParticipantsListResponseDto(
+                        participant.getNickName(),
+                        participant.getRole(),
+                        participant.getStatus()
+                ))
+                .collect(Collectors.toList());
+
+        messagingTemplate.convertAndSend("/topic/"+chatRoom.getId() + ".participants.list", CommonResponseDto.success(responseDto));
 
     }
 
