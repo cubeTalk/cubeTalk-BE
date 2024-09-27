@@ -15,10 +15,12 @@ import server.cubeTalk.chat.model.dto.ChatRoomCommonMessageResponseDto;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
+import server.cubeTalk.chat.service.WebSocketService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class WebSocketChatEventListener {
     private final SimpMessageSendingOperations messageSendingOperations;
     private final ChatRoomRepository chatRoomRepository;
     private final SubscriptionManager subscriptionManager;
+    private final WebSocketService webSocketService;
 
     @EventListener
     public void handleWebSocketConnectListener (SessionConnectedEvent event) {
@@ -36,10 +39,30 @@ public class WebSocketChatEventListener {
 
     @EventListener
     public void handleWebSocketDisconnectListner(SessionDisconnectEvent event) {
-        String sessionId = StompHeaderAccessor.wrap(event.getMessage()).getSessionId();
+        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+
+        String sessionId = headerAccessor.getSessionId();
         // 세션이 끊길 때 해당 세션의 모든 구독 상태 제거
         // 채팅인 경우 해당 세션 id, nickname을 얻어서 관련 db 제거
+        log.info("연결끊긴={}" ,sessionId);
+        subscriptionManager.printSubscriptions();
 
+        String nativeHeaders = (String) headerAccessor.getHeader("id");
+        if (nativeHeaders != null) {
+
+        }
+        else { /* 비정상적인 종료 처리 */
+           Set<String> channelId = subscriptionManager.searchUUIDChannels(sessionId);
+           log.info("channelId={}",channelId);
+           ChatRoom chatRoom = subscriptionManager.searchChatRoom(channelId);
+           log.info("chatroom={}",chatRoom);
+           String nickName = subscriptionManager.searchNickName(sessionId);
+           if (nickName == null) {
+               throw new IllegalArgumentException("해당 닉네임이 존재하지 않습니다.");
+           }
+           webSocketService.changeDisconnectParticipantStatus(chatRoom, nickName);
+
+        }
         subscriptionManager.removeSession(sessionId);
     }
 
@@ -64,12 +87,10 @@ public class WebSocketChatEventListener {
                 log.info("채팅 구독");
                 if (!subscriptionManager.isSubscribed(sessionId,channelId)) {
                     subscriptionManager.addSubscription(sessionId, channelId, nickName);
+
                     /* 메인 채팅방에 입장하는 경우 */
                     if (chatRoom.getChannelId().equals(channelId)) {
-//                        String message = nickName + "님이 입장하셨습니다.";
-//                        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
-//                        String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
-//                        messageSendingOperations.convertAndSend(destination, jsonStringEnterMessage);
+
                     }
                     /* 서브 채팅방에 입장하는 경우 */
                     else {
@@ -78,10 +99,6 @@ public class WebSocketChatEventListener {
                                 .findFirst()
                                 .map(SubChatRoom::getSubChannelId)
                                 .orElseThrow(() -> new IllegalArgumentException("서브 채팅방이 존재하지 않습니다."));
-//                        String message = nickName + "님이 입장하셨습니다.";
-//                        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
-//                        String jsonStringEnterMessage = new ObjectMapper().writeValueAsString(chatMessage);
-//                        messageSendingOperations.convertAndSend(destination, jsonStringEnterMessage);
                     }
                 }
 

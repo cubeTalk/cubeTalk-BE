@@ -1,14 +1,24 @@
 package server.cubeTalk.chat.handler;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
+import server.cubeTalk.chat.model.entity.ChatRoom;
+import server.cubeTalk.chat.repository.ChatRoomRepository;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 @Component
+@RequiredArgsConstructor
+@Log4j2
 public class SubscriptionManager {
+
+    private final ChatRoomRepository chatRoomRepository;
     // 구독 상태를 관리하는 맵 (세션 ID -> 구독 채널 리스트)
     private final ConcurrentHashMap<String, Set<String>> subscriptionMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> sessionNickNameMap = new ConcurrentHashMap<>();
@@ -55,6 +65,23 @@ public class SubscriptionManager {
         );
     }
 
+    public Set<String> searchUUIDChannels(String sessionId) {
+        Set<String> channels = subscriptionMap.getOrDefault(sessionId, new HashSet<>());
+
+        String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+        Pattern pattern = Pattern.compile(uuidPattern);
+
+        // UUID에 해당하는 채널만 필터링
+        Set<String> uuidChannels = new HashSet<>();
+        for (String channel : channels) {
+            if (pattern.matcher(channel).matches()) {
+                uuidChannels.add(channel);
+            }
+        }
+
+        return uuidChannels;
+    }
+
     public boolean isNickNameInList(List<String> nickNames) {
         final boolean[] isNickNameFound = {false};
 
@@ -70,6 +97,20 @@ public class SubscriptionManager {
         return isNickNameFound[0];
     }
 
+    /* 해당 channelId로 구독된 채팅방을 찾는 메서드 */
+    public ChatRoom searchChatRoom(Set<String> channelId) {
+        return chatRoomRepository.findByChannelId(channelId.iterator().next());
+    }
+
+    /* sessionId로 nicnName 반환하는 메서드 */
+    public String searchNickName(String sessionId) {
+        System.out.println(subscriptionMap);
+        if (subscriptionMap.containsKey(sessionId)) {
+            String nickName = sessionNickNameMap.get(sessionId);
+            return nickName;
+        }
+        return null;
+    }
 
 
 }
