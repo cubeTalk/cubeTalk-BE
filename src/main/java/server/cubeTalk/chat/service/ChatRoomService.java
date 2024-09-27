@@ -1,12 +1,14 @@
 package server.cubeTalk.chat.service;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import server.cubeTalk.chat.handler.SubscriptionManager;
@@ -31,6 +33,7 @@ public class ChatRoomService {
     private final MessageRepository messageRepository;
     private final WebSocketService webSocketService;
     private final SubscriptionManager subscriptionManager;
+    private final SimpMessageSendingOperations messageSendingOperations;
     private boolean isRollBack = false;
 
     /* 채팅방 생성 */
@@ -168,6 +171,11 @@ public class ChatRoomService {
             newSubChatRoom.addParticipant(participant);
             chatRoom.getSubChatRooms().add(newSubChatRoom);
         }
+
+        String message = nickName + "님이 입장하셨습니다.";
+        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
+        messageSendingOperations.convertAndSend( "/topic/chat." + chatRoom.getChannelId(), chatMessage);
+        messageSendingOperations.convertAndSend( "/topic/chat." + subchannelId, chatMessage);
 
         memberRepository.save(member);
         chatRoomRepository.save(chatRoom);

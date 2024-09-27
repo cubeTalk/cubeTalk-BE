@@ -10,6 +10,8 @@ import server.cubeTalk.chat.model.dto.ChatRoomProgressResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomVoteResultResponseDto;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.DebateSettings;
+import server.cubeTalk.chat.model.entity.Participant;
+import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 import server.cubeTalk.common.dto.CommonResponseDto;
 
@@ -126,6 +128,114 @@ public class WebSocketService {
         long seconds = totalSeconds - (minutes * 60) - (hours * 3600);
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
+
+
+    public void changeDisconnectParticipantStatus(ChatRoom chatRoom, String userNickName) {
+
+        Participant participant = chatRoom.getParticipants().stream()
+                .filter(p -> p.getNickName().equals(userNickName))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("참가자를 찾을 수 없습니다."));
+
+
+        Participant updatedParticipant = participant.toBuilder()
+                .status("DISCONNECTED")
+                .build();
+
+
+        chatRoom.getParticipants().removeIf(p -> p.getNickName().equals(userNickName));
+        chatRoom.getParticipants().add(updatedParticipant);
+
+
+        for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
+            subChatRoom.getParticipants().stream()
+                    .filter(p -> p.getNickName().equals(userNickName))
+                    .findFirst()
+                    .ifPresent(subParticipant -> {
+                        Participant updatedSubParticipant = subParticipant.toBuilder()
+                                .status("DISCONNECTED")
+                                .build();
+
+                        subChatRoom.getParticipants().removeIf(p -> p.getNickName().equals(userNickName));
+                        subChatRoom.getParticipants().add(updatedSubParticipant);
+                    });
+        }
+
+        // 전체 ChatRoom 객체 저장
+        chatRoomRepository.save(chatRoom);
+    }
+
+    /* 재연결시 */
+    public void changeReconnectParticipantStatus(String channelId, String nickName) {
+        ChatRoom chatRoom = chatRoomRepository.findByChannelId(channelId);
+        String status;
+        if (chatRoom.getChatStatus().equals("STARTED")){
+            Participant participant = chatRoom.getParticipants().stream().filter(participant1 -> participant1.getNickName().equals(nickName)).findFirst().orElseThrow(() -> new IllegalArgumentException("참가자를 찾을 수 없습니다."));
+
+            if (participant.getMemberId().equals(chatRoom.getOwnerId())) {
+                status = "OWNER";
+            }else {
+                status = "READY";
+            }
+
+            Participant updatedParticipant = participant.toBuilder()
+                    .status(status)
+                    .build();
+            chatRoom.getParticipants().removeIf(p -> p.getNickName().equals(nickName));
+            chatRoom.getParticipants().add(updatedParticipant);
+
+            for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
+                subChatRoom.getParticipants().stream()
+                        .filter(p -> p.getNickName().equals(nickName))
+                        .findFirst()
+                        .ifPresent(subParticipant -> {
+                            Participant updatedSubParticipant = subParticipant.toBuilder()
+                                    .status(status)
+                                    .build();
+
+                            subChatRoom.getParticipants().removeIf(p -> p.getNickName().equals(nickName));
+                            subChatRoom.getParticipants().add(updatedSubParticipant);
+                        });
+            }
+
+
+        } else if (chatRoom.getChatStatus().equals("CREATED")) {
+
+            Participant participant = chatRoom.getParticipants().stream().filter(participant1 -> participant1.getNickName().equals(nickName)).findFirst().orElseThrow(() -> new IllegalArgumentException("참가자를 찾을 수 없습니다."));
+            if (participant.getMemberId().equals(chatRoom.getOwnerId())) {
+                status = "OWNER";
+            }else {
+                status = "PENDING";
+            }
+
+            Participant updatedParticipant = participant.toBuilder()
+                    .status(status)
+                    .build();
+
+            chatRoom.getParticipants().removeIf(p -> p.getNickName().equals(nickName));
+            chatRoom.getParticipants().add(updatedParticipant);
+
+            for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
+                subChatRoom.getParticipants().stream()
+                        .filter(p -> p.getNickName().equals(nickName))
+                        .findFirst()
+                        .ifPresent(subParticipant -> {
+                            Participant updatedSubParticipant = subParticipant.toBuilder()
+                                    .status(status)
+                                    .build();
+
+                            subChatRoom.getParticipants().removeIf(p -> p.getNickName().equals(nickName));
+                            subChatRoom.getParticipants().add(updatedSubParticipant);
+                        });
+            }
+
+        } else {
+            throw new IllegalArgumentException("이미 끝난 채팅방입니다.");
+        }
+        chatRoomRepository.save(chatRoom);
+
+    }
+
 
 
 }

@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 @Data
-@Builder
+@Builder(toBuilder = true)
 public class SubChatRoom {
     private String subChannelId;
     private String type;
@@ -17,5 +17,6 @@ public class SubChatRoom {
     public void addParticipant(Participant participant) {
         this.participants.add(participant);
     }
+
 
 }
