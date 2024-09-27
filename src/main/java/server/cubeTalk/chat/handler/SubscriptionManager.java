@@ -95,8 +95,14 @@ public class SubscriptionManager {
     }
 
     /* 해당 channelId로 구독된 채팅방을 찾는 메서드 */
-    public ChatRoom searchChatRoom(Set<String> channelId) {
-        return chatRoomRepository.findByChannelId(channelId.iterator().next());
+    public ChatRoom searchChatRoom(Set<String> channelIds) {
+        for (String channelId : channelIds) {
+            ChatRoom chatRoom = chatRoomRepository.findByChannelId(channelId);
+            if (chatRoom != null) {
+                return chatRoom;
+            }
+        }
+        return null;
     }
 
     /* sessionId로 nicnName 반환하는 메서드 */

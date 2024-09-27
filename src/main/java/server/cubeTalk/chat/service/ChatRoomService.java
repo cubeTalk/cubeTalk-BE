@@ -173,9 +173,9 @@ public class ChatRoomService {
         }
 
         String message = nickName + "님이 입장하셨습니다.";
-        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
-        messageSendingOperations.convertAndSend( "/topic/chat." + chatRoom.getChannelId(), chatMessage);
-        messageSendingOperations.convertAndSend( "/topic/chat." + subchannelId, chatMessage);
+//        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
+        messageSendingOperations.convertAndSend( "/topic/chat." + chatRoom.getChannelId(), message);
+        messageSendingOperations.convertAndSend( "/topic/chat." + subchannelId, message);
 
         memberRepository.save(member);
         chatRoomRepository.save(chatRoom);
