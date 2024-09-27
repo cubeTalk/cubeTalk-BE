@@ -20,7 +20,9 @@ import server.cubeTalk.common.dto.CommonResponseDto;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 @RequiredArgsConstructor
@@ -85,8 +87,15 @@ public class WebSocketChatEventListener {
                 ChatRoom chatRoom = chatRoomRepository.findById(id)
                         .orElseThrow(()-> new IllegalArgumentException("해댕 채팅방이 존재하지않습니다."));
                 log.info("채팅 구독");
+
+
                 if (!subscriptionManager.isSubscribed(sessionId,channelId)) {
                     subscriptionManager.addSubscription(sessionId, channelId, nickName);
+
+                    boolean isCheckDisconnectedStatus = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getStatus().equals("DISCONNECTED"));
+                    boolean isCheckDisconnectedNickName = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getNickName().equals(nickName));
+
+                    if (isCheckDisconnectedStatus && isCheckDisconnectedNickName) webSocketService.changeReconnectParticipantStatus(channelId,nickName);
 
                     /* 메인 채팅방에 입장하는 경우 */
                     if (chatRoom.getChannelId().equals(channelId)) {

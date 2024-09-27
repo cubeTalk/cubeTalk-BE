@@ -6,10 +6,7 @@ import org.springframework.stereotype.Component;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -111,6 +108,15 @@ public class SubscriptionManager {
         }
         return null;
     }
+
+    /* nickName으로 sessionId를 반환하는 메서드 */
+    public Optional<String> searchSessionIdByNickName(String nickName) {
+        return sessionNickNameMap.entrySet().stream()
+                .filter(entry -> nickName.equals(entry.getValue()))  // nickName이 일치하는지 확인
+                .map(Map.Entry::getKey)  // sessionId 반환
+                .findFirst();  // 첫 번째 일치하는 값만 반환
+    }
+
 
 
 }
