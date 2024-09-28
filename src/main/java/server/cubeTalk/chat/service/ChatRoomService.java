@@ -737,7 +737,7 @@ public class ChatRoomService {
         if (!chatRoom.getOwnerId().equals(chatRoomStartRequestDto.getOwnerId()))
             throw new IllegalArgumentException("방장만 시작할 수 있습니다.");
 
-        boolean isPendingParticipant = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getStatus().equals("READY"));
+        boolean isPendingParticipant = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getStatus().equals("PENDING"));
 
         if (isPendingParticipant) {
             throw new IllegalArgumentException("참가자 모두 준비상태여야 시작할 수 있습니다.");
