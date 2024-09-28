@@ -182,6 +182,8 @@ public class ChatRoomService {
 
         webSocketService.sendParticiPantsList(chatRoom);
 
+        if (chatRoomJoinRequestDto.getRole().equals("자유")) subchannelId = null;
+
         return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName);
     }
 
