@@ -17,7 +17,7 @@ public class ChatRoomJoinRequestDto {
     @Pattern(regexp = "^\\S.*$", message = "닉네임은 공백만 입력할 수 없습니다.")
     private String nickName;
     @NotEmpty(message = "역할은 비워둘 수 없습니다.")
-    @ValidMajor(word = {"찬성", "반대", "관전"}, message = "내용에 '찬성 or 반대 or 관전'이 포함되어야 합니다.")
+    @ValidMajor(word = {"찬성", "반대", "관전", "자유"}, message = "내용에 '찬성 or 반대 or 관전 or 자유'이 포함되어야 합니다.")
     private String role;
     private Optional<String> ownerId = Optional.empty();
 }

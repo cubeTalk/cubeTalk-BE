@@ -182,6 +182,8 @@ public class ChatRoomService {
 
         webSocketService.sendParticiPantsList(chatRoom);
 
+        if (chatRoomJoinRequestDto.getRole().equals("자유")) subchannelId = null;
+
         return new ChatRoomJoinResponseDto(chatRoom.getId(), enterMember, chatRoom.getChannelId(), subchannelId, nickName);
     }
 
@@ -524,7 +526,7 @@ public class ChatRoomService {
         int spectatorCount = (int) chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals(SPECTATOR))
                 .count();
 
-        return new ChatRoomParticipantsCountDto(chatRoom.getMaxParticipants(), supportCount, oppositeCount, spectatorCount);
+        return new ChatRoomParticipantsCountDto(supportCount+oppositeCount, chatRoom.getMaxParticipants(), supportCount, oppositeCount, spectatorCount);
     }
 
     /* 채팅방 정보 */

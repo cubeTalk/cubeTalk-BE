@@ -23,7 +23,7 @@ public class ParticipantStatusSchedulerService {
     private final ChatRoomRepository chatRoomRepository;
     private final SimpMessageSendingOperations messageSendingOperations;
 
-    @Scheduled(fixedRate = 60000) // 1분마다 실행
+    @Scheduled(fixedRate = 30000) // 30초마다 실행
     public void checkParticipantsDisconnectedStatus() throws IllegalArgumentException {
         List<ChatRoom> chatRoomList = chatRoomRepository.findByChatStatus("STARTED");
 

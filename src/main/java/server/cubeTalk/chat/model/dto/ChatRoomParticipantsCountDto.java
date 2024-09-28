@@ -6,6 +6,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class ChatRoomParticipantsCountDto {
+    private int totalCount;
     private int maxCapacityCount;
     private int supportCount;
     private int oppositeCount;
