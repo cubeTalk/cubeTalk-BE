@@ -45,7 +45,7 @@ public class ParticipantStatusSchedulerService {
 
                 if (supportCount == 0 || oppositeCount == 0) {
                     ProgressInterruptionResponse response = new ProgressInterruptionResponse("interruption","참가자가 없어 10초 뒤 채팅이 종료됩니다.");
-                    log.info("채팅방 종료 이유 : 찬성,반대 인원 조건 부적절");
+                    log.info("채팅방 종료 이유 : 찬성,반대 인원 조건 부적 ");
                     messageSendingOperations.convertAndSend("/topic/progress." + chatRoom.getId(), response);
 
                     // 10초 후에 채팅방 삭제
@@ -104,9 +104,17 @@ public class ParticipantStatusSchedulerService {
 
                 if (isOwnerDisconnected) {
                     // 새로운 방장 후보군 필터링 (DISCONNECTED 및 관전 제외)
-                    List<Participant> availableParticipants = chatRoom.getParticipants().stream()
-                            .filter(participant -> !participant.getStatus().equals("DISCONNECTED") && !participant.getRole().equals("관전"))
-                            .toList();
+                    List<Participant> availableParticipants;
+
+                    if (chatRoom.getChatMode().equals("찬반")) {
+                        availableParticipants = chatRoom.getParticipants().stream()
+                                .filter(participant -> !participant.getStatus().equals("DISCONNECTED") && !participant.getRole().equals("관전"))
+                                .toList();
+                    } else {
+                        availableParticipants = chatRoom.getParticipants().stream()
+                                .filter(participant -> !participant.getStatus().equals("DISCONNECTED"))
+                                .toList();
+                    }
 
                     if (!availableParticipants.isEmpty()) {
 
@@ -162,6 +170,23 @@ public class ParticipantStatusSchedulerService {
                         originMemberId = originOwner.getMemberId();
                         chatRoomRepository.save(updatedChatRoom);
 
+                    } else { /* 방장 후보군이 없는 경우 */
+
+                        // 채팅팡 폭파 10초뒤
+                        ProgressInterruptionResponse response = new ProgressInterruptionResponse("interruption","방장후보군이 없어 10초 뒤 채팅이 종료됩니다.");
+                        messageSendingOperations.convertAndSend("/topic/progress." + chatRoom.getId(), response);
+
+                        // 10초 후에 채팅방 삭제
+                        scheduler.schedule(() -> {
+                            try {
+                                chatRoomRepository.delete(chatRoom);
+                                for (Participant participant : chatRoom.getParticipants()) {
+                                    memberRepository.deleteByMemberId(participant.getMemberId());
+                                }
+                            } catch (Exception e) {
+                                log.error("채팅방 삭제 중 오류 발생 : {}", e.getMessage());
+                            }
+                        }, 10, TimeUnit.SECONDS);
                     }
                 }
                 else {
