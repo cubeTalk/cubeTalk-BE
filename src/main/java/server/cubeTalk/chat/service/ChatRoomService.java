@@ -623,8 +623,10 @@ public class ChatRoomService {
 
 
         for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
-            subChatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(p.getMemberId()));
-            break;
+            if (subChatRoom.getType().equals(p.getRole())) {
+                subChatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(p.getMemberId()));
+                break;
+            }
         }
 
         Participant updatedParticipant = Participant.builder()
