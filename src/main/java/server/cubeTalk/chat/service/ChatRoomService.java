@@ -173,9 +173,9 @@ public class ChatRoomService {
         }
 
         String message = nickName + "님이 입장하셨습니다.";
-//        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
-        messageSendingOperations.convertAndSend( "/topic/chat." + chatRoom.getChannelId(), message);
-        messageSendingOperations.convertAndSend( "/topic/chat." + subchannelId, message);
+        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
+        messageSendingOperations.convertAndSend( "/topic/chat." + chatRoom.getChannelId(), chatMessage);
+        if (chatRoomJoinRequestDto.getRole().equals("찬반")) messageSendingOperations.convertAndSend( "/topic/chat." + subchannelId, chatMessage);
 
         memberRepository.save(member);
         chatRoomRepository.save(chatRoom);
@@ -318,6 +318,8 @@ public class ChatRoomService {
         }
 
         chatRoomRepository.save(updatedChatRoom);
+
+
 
         webSocketService.sendParticiPantsList(updatedChatRoom);
 
@@ -655,7 +657,7 @@ public class ChatRoomService {
 
         chatRoomRepository.save(updateChatRoom);
 
-        return chatRoom.getParticipants().stream()
+        return updateChatRoom.getParticipants().stream()
                 .map(participant -> new ChatRoomParticipantsListResponseDto(
                         participant.getNickName(),
                         participant.getRole(),
