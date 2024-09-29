@@ -2,6 +2,7 @@ package server.cubeTalk.chat.service;
 
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WebSocketService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatRoomRepository chatRoomRepository;
@@ -255,9 +257,19 @@ public class WebSocketService {
                 ))
                 .collect(Collectors.toList());
 
+
+//        for (ChatRoomParticipantsListResponseDto participantDto : responseDto) {
+//            log.info("참여자 정보: 닉네임={}, 역할={}, 상태={}",
+//                    participantDto.getNickName(),
+//                    participantDto.getRole(),
+//                    participantDto.getStatus());
+//        }
+
         messagingTemplate.convertAndSend("/topic/"+chatRoom.getId() + ".participants.list", CommonResponseDto.success(responseDto));
 
     }
+
+
 
 
 
