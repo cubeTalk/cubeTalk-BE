@@ -94,11 +94,11 @@ public class WebSocketChatEventListener {
 
                     boolean isCheckDisconnectedStatus = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getStatus().equals("DISCONNECTED"));
                     boolean isCheckDisconnectedNickName = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getNickName().equals(nickName));
-
-                    if (isCheckDisconnectedStatus && isCheckDisconnectedNickName) webSocketService.changeReconnectParticipantStatus(channelId,nickName);
+                    if (isCheckDisconnectedStatus && isCheckDisconnectedNickName) webSocketService.changeReconnectParticipantStatus(chatRoom,nickName);
 
                     /* 메인 채팅방에 입장하는 경우 */
                     if (chatRoom.getChannelId().equals(channelId)) {
+
 
                     }
                     /* 서브 채팅방에 입장하는 경우 */
@@ -108,6 +108,8 @@ public class WebSocketChatEventListener {
                                 .findFirst()
                                 .map(SubChatRoom::getSubChannelId)
                                 .orElseThrow(() -> new IllegalArgumentException("서브 채팅방이 존재하지 않습니다."));
+
+
                     }
                 }
 
