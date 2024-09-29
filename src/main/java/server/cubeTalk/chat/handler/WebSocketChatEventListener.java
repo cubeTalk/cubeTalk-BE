@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
@@ -55,6 +56,7 @@ public class WebSocketChatEventListener {
             if (nativeHeaders != null) {
                 // 정상 종료 처리
                 // 임시
+                log.info("정상 구독 해제 처리됨.");
                 messageSendingOperations.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error("구독해제",destination + "이 구독해제되었습니다."));
 
             } else {
@@ -71,7 +73,7 @@ public class WebSocketChatEventListener {
             }
         } catch (IllegalArgumentException e) {
             log.error("에러 발생: " + e.getMessage());
-            messageSendingOperations.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error("구독해제실패",e.getMessage()));
+            throw e;
         }
         subscriptionManager.removeSession(sessionId);
     }
@@ -149,12 +151,16 @@ public class WebSocketChatEventListener {
 
         } catch (IllegalArgumentException e) {
             log.error("구독 실패: " + e.getMessage());
-            messageSendingOperations.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error("구독실패",e.getMessage()));
+            throw e;
         }
         catch (Exception e) {
             e.printStackTrace();
-
+            throw e;
         }
+    }
+    @MessageExceptionHandler(IllegalArgumentException.class)
+    public void handleException(IllegalArgumentException e) {
+        throw e;
     }
 
     @EventListener
