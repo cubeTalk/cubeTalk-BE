@@ -44,26 +44,34 @@ public class WebSocketChatEventListener {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
 
         String sessionId = headerAccessor.getSessionId();
+        String destination = headerAccessor.getDestination();
         // 세션이 끊길 때 해당 세션의 모든 구독 상태 제거
         // 채팅인 경우 해당 세션 id, nickname을 얻어서 관련 db 제거
         log.info("연결끊긴={}" ,sessionId);
         subscriptionManager.printSubscriptions();
 
-        String nativeHeaders = (String) headerAccessor.getHeader("id");
-        if (nativeHeaders != null) {
+        try {
+            String nativeHeaders = (String) headerAccessor.getHeader("id");
+            if (nativeHeaders != null) {
+                // 정상 종료 처리
+                // 임시
+                messageSendingOperations.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error("구독해제",destination + "이 구독해제되었습니다."));
 
-        }
-        else { /* 비정상적인 종료 처리 */
-           Set<String> channelId = subscriptionManager.searchUUIDChannels(sessionId);
-           log.info("channelId={}",channelId);
-           ChatRoom chatRoom = subscriptionManager.searchChatRoom(channelId);
-           log.info("chatroom={}",chatRoom);
-           String nickName = subscriptionManager.searchNickName(sessionId);
-           if (nickName == null) {
-               throw new IllegalArgumentException("해당 닉네임이 존재하지 않습니다.");
-           }
-           webSocketService.changeDisconnectParticipantStatus(chatRoom, nickName);
-
+            } else {
+                // 비정상적인 종료 처리
+                Set<String> channelId = subscriptionManager.searchUUIDChannels(sessionId);
+                log.info("channelId={}", channelId);
+                ChatRoom chatRoom = subscriptionManager.searchChatRoom(channelId);
+                log.info("chatroom={}", chatRoom);
+                String nickName = subscriptionManager.searchNickName(sessionId);
+                if (nickName == null) {
+                    throw new IllegalArgumentException("해당 닉네임이 존재하지 않습니다.");
+                }
+                webSocketService.changeDisconnectParticipantStatus(chatRoom, nickName);
+            }
+        } catch (IllegalArgumentException e) {
+            log.error("에러 발생: " + e.getMessage());
+            messageSendingOperations.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error("구독해제실패",e.getMessage()));
         }
         subscriptionManager.removeSession(sessionId);
     }
@@ -103,12 +111,16 @@ public class WebSocketChatEventListener {
                     }
                     /* 서브 채팅방에 입장하는 경우 */
                     else {
-                        chatRoom.getSubChatRooms().stream()
-                                .filter(subChatRoom -> subChatRoom.getSubChannelId().equals(channelId))
-                                .findFirst()
-                                .map(SubChatRoom::getSubChannelId)
-                                .orElseThrow(() -> new IllegalArgumentException("서브 채팅방이 존재하지 않습니다."));
+                        try {
+                            chatRoom.getSubChatRooms().stream()
+                                    .filter(subChatRoom -> subChatRoom.getSubChannelId().equals(channelId))
+                                    .findFirst()
+                                    .map(SubChatRoom::getSubChannelId)
+                                    .orElseThrow(() -> new IllegalArgumentException("서브 채팅방이 존재하지 않습니다."));
 
+                        } catch (IllegalArgumentException e) {
+                            messageSendingOperations.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error("구독실패",e.getMessage()));
+                        }
 
                     }
                 }
