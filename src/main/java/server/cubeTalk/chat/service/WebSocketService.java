@@ -15,6 +15,7 @@ import server.cubeTalk.chat.model.entity.Participant;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 import server.cubeTalk.common.dto.CommonResponseDto;
+import server.cubeTalk.common.service.ParticipantStatusSchedulerService;
 
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 public class WebSocketService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatRoomRepository chatRoomRepository;
+    private final ParticipantStatusSchedulerService participantStatusSchedulerService;
     private boolean isVoteEnd = false;
     public void sendErrorMessage(String title, String errorMessage) {
         messagingTemplate.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error(title,errorMessage));
@@ -166,11 +168,16 @@ public class WebSocketService {
 
         // 전체 ChatRoom 객체 저장
         chatRoomRepository.save(chatRoom);
+
+        participantStatusSchedulerService.scheduleStatusCheck(chatRoom, userNickName);
+
     }
 
     /* 재연결시 */
-    public void changeReconnectParticipantStatus(String channelId, String nickName) {
-        ChatRoom chatRoom = chatRoomRepository.findByChannelId(channelId);
+    public void changeReconnectParticipantStatus(ChatRoom chatRoom, String nickName) {
+
+//        ChatRoom chatRoom = chatRoomRepository.findByChannelId(channelId);
+
         String status;
         if (chatRoom.getChatStatus().equals("STARTED")){
             Participant participant = chatRoom.getParticipants().stream().filter(participant1 -> participant1.getNickName().equals(nickName)).findFirst().orElseThrow(() -> new IllegalArgumentException("참가자를 찾을 수 없습니다."));
