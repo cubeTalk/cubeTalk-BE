@@ -178,8 +178,6 @@ public class WebSocketService {
     /* 재연결시 */
     public void changeReconnectParticipantStatus(ChatRoom chatRoom, String nickName) {
 
-//        ChatRoom chatRoom = chatRoomRepository.findByChannelId(channelId);
-
         String status;
         if (chatRoom.getChatStatus().equals("STARTED")){
             Participant participant = chatRoom.getParticipants().stream().filter(participant1 -> participant1.getNickName().equals(nickName)).findFirst().orElseThrow(() -> new IllegalArgumentException("참가자를 찾을 수 없습니다."));
