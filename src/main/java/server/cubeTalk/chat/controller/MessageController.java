@@ -44,12 +44,13 @@ public class MessageController {
         headerAccessor.getSessionAttributes().put("nickName", RequestDto.getSender());
         String sessionId = headerAccessor.getSessionId();
 
+        subscriptionManager.printSubscriptions();
         // 구독 상태 검증
         if (!subscriptionManager.isSubscribed(sessionId, channelId)) {
             throw new IllegalArgumentException("구독되지 않은 채널에 메시지를 발행할 수 없습니다.");
         }
         log.info("메시지 받기 ");
-        subscriptionManager.printSubscriptions();
+
         ChatRoomSendMessageResponseDto responseDto = chatRoomService.sendChatMessage(channelId,RequestDto);
 
         return responseDto;

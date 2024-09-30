@@ -779,7 +779,8 @@ public class ChatRoomService {
         boolean isParticipant = subscriptionManager.isNickNameInList(participantNickNames);
 
         if (isParticipant) {
-            webSocketService.progressChatRoom(updatedChatRoom);
+            if (chatRoom.getChatMode().equals("찬반")) webSocketService.progressDebateChatRoom(updatedChatRoom);
+            else webSocketService.progressFreeChatRoom(updatedChatRoom);
         } else {
             throw new IllegalArgumentException("채팅방에 참가중이지 않기 때문에 채팅방 진행이 어렵습니다.(채팅방 구독 실패)");
         }
@@ -797,9 +798,11 @@ public class ChatRoomService {
             webSocketService.sendErrorMessage("투표", "type 형식이 잘못되었습니다.");
             throw new IllegalArgumentException("type 형식이 잘못되었습니다.");
         }
-        if (!(chatRoomVoteRequestDto.getTeam().equals("SUPPORT") || chatRoomVoteRequestDto.getTeam().equals("OPPOSITE"))) {
-            webSocketService.sendErrorMessage("투표", "team 형식이 잘못되었습니다.");
-            throw new IllegalArgumentException("team 형식이 잘못되었습니다.");
+        if (chatRoomVoteRequestDto.getTeam().isPresent()) {
+            if (!(chatRoomVoteRequestDto.getTeam().get().equals("SUPPORT") || chatRoomVoteRequestDto.getTeam().get().equals("OPPOSITE"))) {
+                webSocketService.sendErrorMessage("투표", "team 형식이 잘못되었습니다.");
+                throw new IllegalArgumentException("team 형식이 잘못되었습니다.");
+            }
         }
         boolean isMVP = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getNickName().equals(chatRoomVoteRequestDto.getMvp()));
         if (!isMVP) {
