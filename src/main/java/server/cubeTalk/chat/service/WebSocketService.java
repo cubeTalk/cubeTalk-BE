@@ -3,11 +3,8 @@ package server.cubeTalk.chat.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-import server.cubeTalk.chat.handler.SubscriptionManager;
 import server.cubeTalk.chat.model.dto.ChatRoomParticipantsListResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomProgressResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomVoteResultResponseDto;
@@ -20,8 +17,7 @@ import server.cubeTalk.common.dto.CommonResponseDto;
 import server.cubeTalk.common.service.ParticipantStatusSchedulerService;
 import server.cubeTalk.common.util.DateTimeUtils;
 
-import javax.management.Query;
-import java.time.LocalDateTime;
+
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,13 +32,51 @@ public class WebSocketService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatRoomRepository chatRoomRepository;
     private final ParticipantStatusSchedulerService participantStatusSchedulerService;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private boolean isVoteEnd = false;
     public void sendErrorMessage(String title, String errorMessage) {
         messagingTemplate.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error(title,errorMessage));
     }
 
-    /* 채팅방 진행 */
-    public void progressChatRoom(ChatRoom chatRoom) {
+    /* 채팅방 진행 (자유) */
+    public void progressFreeChatRoom(ChatRoom chatRoom) {
+        String id = chatRoom.getId();
+        double chatDuration = chatRoom.getChatDuration();
+
+        AtomicLong totalDurationInSeconds = new AtomicLong((long) (chatDuration * 60));
+//        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+        scheduler.scheduleAtFixedRate(() -> {
+            long remainingSeconds = totalDurationInSeconds.decrementAndGet();
+
+            // 남은 시간을 포맷팅하여 메시지 전송
+            String remainingTime = formatDuration(remainingSeconds);
+
+            // 자유 토론 진행 메시지 전송
+            ChatRoomProgressResponseDto.ChatRoomBasicProgressResponse progressResponse =
+                    ChatRoomProgressResponseDto.ChatRoomBasicProgressResponse.progress("free", remainingTime, "타이머 전송 중..");
+
+            messagingTemplate.convertAndSend("/topic/progress." + id, progressResponse);
+
+            // 남은 시간이 30초일 때 투표 시간 메시지 전송
+            if (remainingSeconds == 30) {
+                ChatRoomProgressResponseDto.ChatRoomBasicProgressResponse votingTimeResponse =
+                        ChatRoomProgressResponseDto.ChatRoomBasicProgressResponse.progress("votingTime", "00:00:00", "타이머 전송 중..");
+
+                messagingTemplate.convertAndSend("/topic/progress." + id, votingTimeResponse);
+            }
+
+            // 시간이 다 되었을 때 타이머 종료
+            if (remainingSeconds <= 0) {
+                scheduler.shutdown(); // 타이머 종료
+                sendFinalResults(id); // 투표 결과 전송
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+
+    }
+
+    /* 채팅방 진행 (찬반)*/
+    public void progressDebateChatRoom(ChatRoom chatRoom) {
 
         String id = chatRoom.getId();
         DebateSettings debateSettings = chatRoom.getDebateSettings();
@@ -58,7 +92,7 @@ public class WebSocketService {
 
     private void startPhase(String phase, long duration, AtomicLong totalDurationInSeconds, String id, DebateSettings debateSettings) {
         // 새로운 스케줄러를 각 단계마다 생성
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+//        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         AtomicLong phaseDuration = new AtomicLong(duration);
 
         scheduler.scheduleAtFixedRate(() -> {
@@ -108,9 +142,13 @@ public class WebSocketService {
     public void sendFinalResults(String chatRoomId) {
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
                 .orElseThrow(()-> new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
+        Integer supportVotes = null;
+        Integer oppositeVotes = null;
+        if (chatRoom.getChatMode().equals("찬반")) {
+            supportVotes = chatRoom.getVote().getSupport();
+            oppositeVotes = chatRoom.getVote().getOpposite();
+        }
 
-        int supportVotes = chatRoom.getVote().getSupport();
-        int oppositeVotes = chatRoom.getVote().getOpposite();
         String mvp = chatRoom.getVote().calculateMVP();
 
         ChatRoomVoteResultResponseDto result = new ChatRoomVoteResultResponseDto(supportVotes, oppositeVotes, mvp);
