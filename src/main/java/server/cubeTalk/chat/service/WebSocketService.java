@@ -3,6 +3,7 @@ package server.cubeTalk.chat.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,10 @@ import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 import server.cubeTalk.common.dto.CommonResponseDto;
 import server.cubeTalk.common.service.ParticipantStatusSchedulerService;
+import server.cubeTalk.common.util.DateTimeUtils;
 
+import javax.management.Query;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -147,6 +151,7 @@ public class WebSocketService {
 
         Participant updatedParticipant = participant.toBuilder()
                 .status("DISCONNECTED")
+                .disconnectedUpdatedAt(DateTimeUtils.nowFromZone())
                 .build();
 
 
@@ -161,6 +166,7 @@ public class WebSocketService {
                     .ifPresent(subParticipant -> {
                         Participant updatedSubParticipant = subParticipant.toBuilder()
                                 .status("DISCONNECTED")
+                                .disconnectedUpdatedAt(DateTimeUtils.nowFromZone())
                                 .build();
 
                         subChatRoom.getParticipants().removeIf(p -> p.getNickName().equals(userNickName));
@@ -190,7 +196,10 @@ public class WebSocketService {
 
             Participant updatedParticipant = participant.toBuilder()
                     .status(status)
+                    .disconnectedUpdatedAt(null)
                     .build();
+
+
             chatRoom.getParticipants().removeIf(p -> p.getNickName().equals(nickName));
             chatRoom.getParticipants().add(updatedParticipant);
 
@@ -201,6 +210,7 @@ public class WebSocketService {
                         .ifPresent(subParticipant -> {
                             Participant updatedSubParticipant = subParticipant.toBuilder()
                                     .status(status)
+                                    .disconnectedUpdatedAt(null)
                                     .build();
 
                             subChatRoom.getParticipants().removeIf(p -> p.getNickName().equals(nickName));
@@ -220,6 +230,7 @@ public class WebSocketService {
 
             Participant updatedParticipant = participant.toBuilder()
                     .status(status)
+                    .disconnectedUpdatedAt(null)
                     .build();
 
             chatRoom.getParticipants().removeIf(p -> p.getNickName().equals(nickName));

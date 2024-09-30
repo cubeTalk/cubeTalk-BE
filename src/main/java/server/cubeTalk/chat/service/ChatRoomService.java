@@ -881,7 +881,7 @@ public class ChatRoomService {
 
     private ChatRoomFilterListResponseDto toChatRoomFilterListResponseDto(ChatRoom chatRoom) {
         String ownerNickName = chatRoom.getParticipants().stream()
-                .filter(p -> p.getStatus().equals("OWNER"))
+                .filter(p -> p.getMemberId().equals(chatRoom.getOwnerId()))
                 .findFirst()
                 .flatMap(p -> Optional.ofNullable(p.getNickName())) // null일 수 있는 nickName 처리
                 .orElse("Unknown");
@@ -891,11 +891,16 @@ public class ChatRoomService {
         int oppositeCount = (int) chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals("반대"))
                 .count();
 
-        int currentParticipantsCount = supportCount + oppositeCount;
-
+        Integer currentParticipantsCount = null;
+        if (chatRoom.getChatMode().equals("자유")) {
+            currentParticipantsCount = chatRoom.getParticipants().size();
+        } else {
+            currentParticipantsCount = supportCount + oppositeCount;
+        }
         return new ChatRoomFilterListResponseDto(
                 chatRoom.getId(),
                 chatRoom.getChatMode(),
+                chatRoom.getChatStatus(),
                 chatRoom.getTitle(),
                 chatRoom.getDescription(),
                 chatRoom.getChatDuration(),

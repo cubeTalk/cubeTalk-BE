@@ -106,7 +106,7 @@ public class WebSocketChatEventListener {
                     boolean isCheckDisconnectedNickName = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getNickName().equals(nickName));
 
                     if (isCheckDisconnectedStatus && isCheckDisconnectedNickName) webSocketService.changeReconnectParticipantStatus(chatRoom,nickName);
-
+                    log.info("재연결완료");
                     /* 메인 채팅방에 입장하는 경우 */
                     if (chatRoom.getChannelId().equals(channelId)) {
 
