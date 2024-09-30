@@ -10,12 +10,13 @@ import java.time.LocalDateTime;
 public class ChatRoomFilterListResponseDto {
     private String id;
     private String chatMode;
+    private String chatStatus;
     private String title;
     private String description;
     private Double chatDuration;
     private String ownerNickName;
     private int maxParticipants;
-    private int currentParticipantsCount;
+    private Integer currentParticipantsCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
