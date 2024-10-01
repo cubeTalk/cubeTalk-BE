@@ -174,9 +174,9 @@ public class ChatRoomService {
         }
 
         String message = nickName + "님이 입장하셨습니다.";
-        sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
+        webSocketService.sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
         if (chatRoomJoinRequestDto.getRole().equals("찬반")) {
-            sendChatRoomMessage("EVENT",message,"/topic/chat." + subchannelId);
+            webSocketService.sendChatRoomMessage("EVENT",message,"/topic/chat." + subchannelId);
         }
 
         memberRepository.save(member);
@@ -325,28 +325,24 @@ public class ChatRoomService {
 
         // 팀 변경 메시지
         String message = searchParticipant.getNickName() + "님이 " + chatRoomTeamChangeRequestDto.getRole() + "팀으로 팀을 변경하셨습니다.";
-        sendChatRoomMessage("EVENT", message, "/topic/chat." + chatRoom.getChannelId());
+        webSocketService.sendChatRoomMessage("EVENT", message, "/topic/chat." + chatRoom.getChannelId());
 
         // 입장 메시지
         String subMessage = searchParticipant.getNickName() + "님이 입장하셨습니다.";
         if (chatRoom.getChatMode().equals("찬반")) {
-            sendChatRoomMessage("EVENT", subMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
+            webSocketService.sendChatRoomMessage("EVENT", subMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
         }
 
         // 퇴장 메시지
         String subExitMessage = searchParticipant.getNickName() + "님이 퇴장하셨습니다.";
         if (chatRoom.getChatMode().equals("찬반")) {
-            sendChatRoomMessage("EVENT", subExitMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
+            webSocketService.sendChatRoomMessage("EVENT", subExitMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
         }
 
         return new ChatRoomTeamChangeResponseDto(id, chatRoom.getChannelId(), changeSubChannelId[0], chatRoomTeamChangeRequestDto.getSubChannelId());
     }
 
-    /* 메세지 전달 */
-    public void sendChatRoomMessage(String eventType, String messageContent, String destination) {
-        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto(eventType, messageContent);
-        messageSendingOperations.convertAndSend(destination, chatMessage);
-    }
+
 
 
     /* 참가 인원 검증 */
