@@ -304,14 +304,6 @@ public class WebSocketService {
                 ))
                 .collect(Collectors.toList());
 
-
-//        for (ChatRoomParticipantsListResponseDto participantDto : responseDto) {
-//            log.info("참여자 정보: 닉네임={}, 역할={}, 상태={}",
-//                    participantDto.getNickName(),
-//                    participantDto.getRole(),
-//                    participantDto.getStatus());
-//        }
-
         messagingTemplate.convertAndSend("/topic/"+chatRoom.getId() + ".participants.list", CommonResponseDto.success(responseDto));
 
     }
