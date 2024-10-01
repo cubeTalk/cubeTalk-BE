@@ -49,68 +49,67 @@ public class ParticipantStatusSchedulerService {
         log.info("삭제된 memberId {}",memberId);
     }
 
-//    @Scheduled(fixedRate = 1000) // 1초마다 실행
 
     public void checkParticipantsDisconnectedStatus() throws IllegalArgumentException {
         List<ChatRoom> chatRoomList = chatRoomRepository.findAll();
         for (ChatRoom chatRoom : chatRoomList) {
             /* 찬반 모드인 토론일 때 참가자 인원 확인 */
             if (chatRoom.getChatMode().equals("찬반")) {
-                long supportCount = chatRoom.getParticipants().stream().filter(p -> p.getRole().equals("찬성")).count();
-                long oppositeCount = chatRoom.getParticipants().stream().filter(p -> p.getRole().equals("반대")).count();
-
-                if (supportCount == 0 || oppositeCount == 0) {
-                    ProgressInterruptionResponse response = new ProgressInterruptionResponse("interruption","참가자가 없어 10초 뒤 채팅이 종료됩니다.");
-                    log.info("채팅방 종료 이유 : 찬성,반대 인원 조건 부적 ");
-                    messageSendingOperations.convertAndSend("/topic/progress." + chatRoom.getId(), response);
-
-                    // 5초 후에 채팅방 삭제
-                    scheduler.schedule(() -> {
-                        try {
-                            log.info("찬성,반대 인원 조건 부족으로 채팅방 삭제중.. ");
-                            deleteChatRoom(chatRoom);
-                            log.info("삭제 완료 ");
-                            for (Participant participant : chatRoom.getParticipants()) {
-//                                memberRepository.deleteByMemberId(participant.getMemberId());
-                                deleteMember(participant.getMemberId());
-                                log.info("모든 참가자 memberId 삭제 : {}",participant.getMemberId());
-                            }
-                        } catch (Exception e) {
-                            log.error("채팅방 삭제 중 오류 발생 : {}", e.getMessage());
-                        }
-                    }, 5, TimeUnit.SECONDS);
-
-
-                    throw new IllegalArgumentException("참가자가 없어 채팅이 종료됩니다.");
-
-                }
-
-
+                checkDebateParticipantsCount(chatRoom);
             } /* 자유 모드인 토론일 때 참가자 인원 확인 */
             else if (chatRoom.getChatMode().equals("자유")) {
-                long participantsCount = chatRoom.getParticipants().stream().filter(p -> p.getRole().equals("자유")).count();
-                if (participantsCount == 0) {
-                    ProgressInterruptionResponse response = new ProgressInterruptionResponse("interruption","참가자가 없어 10초 뒤 채팅이 종료됩니다.");
-                    messageSendingOperations.convertAndSend("/topic/progress." + chatRoom.getId(), response);
+                checkFreeParticipantsCount(chatRoom);
+            }
+        }
+    }
+    /* 자유 토론일 때 참가자 인원 확인 */
+    public void checkFreeParticipantsCount(ChatRoom chatRoom) {
+        long participantsCount = chatRoom.getParticipants().stream().filter(p -> p.getRole().equals("자유")).count();
+        if (participantsCount == 0) {
+            webSocketService.sendChatRoomMessage("EVENT","참가자가 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
+            // 5초 후에 채팅방 삭제
+            deleteChatRoomScheduler(chatRoom,5,"자유 채팅방 인원부족으로 인한");
 
-                    // 10초 후에 채팅방 삭제
-                    scheduler.schedule(() -> {
-                        try {
-                            chatRoomRepository.delete(chatRoom);
-                            for (Participant participant : chatRoom.getParticipants()) {
-                                memberRepository.deleteByMemberId(participant.getMemberId());
-                            }
-                        } catch (Exception e) {
-                            log.error("채팅방 삭제 중 오류 발생 : {}", e.getMessage());
-                        }
-                    }, 10, TimeUnit.SECONDS);
+            throw new IllegalArgumentException("참가자가 없어 채팅이 종료됩니다.");
+        }
 
-                    throw new IllegalArgumentException("참가자가 없어 채팅이 종료됩니다.");
+    }
+
+
+    /* 찬반 토론일 때 참가자 인원 확인 */
+    public void checkDebateParticipantsCount(ChatRoom chatRoom) {
+        long supportCount = chatRoom.getParticipants().stream().filter(p -> p.getRole().equals("찬성")).count();
+        long oppositeCount = chatRoom.getParticipants().stream().filter(p -> p.getRole().equals("반대")).count();
+
+        if (supportCount == 0 || oppositeCount == 0) {
+
+            log.info("채팅방 종료 이유 : 찬성,반대 인원 조건 부족 ");
+            webSocketService.sendChatRoomMessage("EVENT","참가자가 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
+
+            // 5초 후에 채팅방 삭제
+            deleteChatRoomScheduler(chatRoom,5,"찬성,반대 인원 조건 부족");
+
+            throw new IllegalArgumentException("참가자가 없어 채팅이 종료됩니다.");
+        }
+    }
+
+
+    /* 채팅방 삭제 scheduler */
+    public void deleteChatRoomScheduler(ChatRoom chatRoom,int delayInSeconds,String deleteReason) {
+        scheduler.schedule(() -> {
+            try {
+                log.info(deleteReason + "으로 채팅방 삭제중..");
+                deleteChatRoom(chatRoom);
+                log.info("삭제완료");
+                for (Participant participant : chatRoom.getParticipants()) {
+                    deleteMember(participant.getMemberId());
+                    log.info("모든 참가자 memberId 삭제 : {}",participant.getMemberId());
                 }
 
+            } catch (Exception e) {
+                log.error("채팅방 삭제 중 오류 발생 : {}", e.getMessage());
             }
-
-        }
+        }, delayInSeconds, TimeUnit.SECONDS);
     }
 
     /* 해당 참가자의 DISCONNECTED 상태를 확인 */
@@ -162,7 +161,7 @@ public class ParticipantStatusSchedulerService {
                 // 메인,서브채팅방에서 기존 방장 제거
                 removeOwnerMemberFromChatRoom(chatRoom,participant);
 
-                webSocketService.sendChatRoomMessage("interruption","방장후보군이 없어 5초 뒤 채팅이 종료됩니다.","/topic/progress." + chatRoom.getId());
+                webSocketService.sendChatRoomMessage("EVENT","방장후보군이 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
 
                 if (chatRoom.getChatStatus().equals("CREATED")) {
                     checkParticipantsDisconnectedStatus();
@@ -200,7 +199,6 @@ public class ParticipantStatusSchedulerService {
                         }
                     }
                 }
-
 
                 log.info("Disconnected된 기존 방장의 닉네임: {}", participant.getNickName());
 
