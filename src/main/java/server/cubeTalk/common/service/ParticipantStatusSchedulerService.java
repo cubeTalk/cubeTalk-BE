@@ -11,6 +11,8 @@ import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.Participant;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
+import server.cubeTalk.chat.service.ChatRoomService;
+import server.cubeTalk.chat.service.MessageService;
 import server.cubeTalk.chat.service.WebSocketService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 import server.cubeTalk.common.util.DateTimeUtils;
@@ -31,7 +33,7 @@ public class ParticipantStatusSchedulerService {
     private final ChatRoomRepository chatRoomRepository;
     private final SimpMessageSendingOperations messageSendingOperations;
     private final MemberRepository memberRepository;
-    private final WebSocketService webSocketService;
+    private final MessageService messageService;
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -66,7 +68,7 @@ public class ParticipantStatusSchedulerService {
     public void checkFreeParticipantsCount(ChatRoom chatRoom) {
         long participantsCount = chatRoom.getParticipants().stream().filter(p -> p.getRole().equals("자유")).count();
         if (participantsCount == 0) {
-            webSocketService.sendChatRoomMessage("EVENT","참가자가 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
+            messageService.sendChatRoomMessage("EVENT","참가자가 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
             // 5초 후에 채팅방 삭제
             deleteChatRoomScheduler(chatRoom,5,"자유 채팅방 인원부족으로 인한");
 
@@ -84,7 +86,7 @@ public class ParticipantStatusSchedulerService {
         if (supportCount == 0 || oppositeCount == 0) {
 
             log.info("채팅방 종료 이유 : 찬성,반대 인원 조건 부족 ");
-            webSocketService.sendChatRoomMessage("EVENT","참가자가 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
+            messageService.sendChatRoomMessage("EVENT","참가자가 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
 
             // 5초 후에 채팅방 삭제
             deleteChatRoomScheduler(chatRoom,5,"찬성,반대 인원 조건 부족");
@@ -161,7 +163,7 @@ public class ParticipantStatusSchedulerService {
                 // 메인,서브채팅방에서 기존 방장 제거
                 removeOwnerMemberFromChatRoom(chatRoom,participant);
 
-                webSocketService.sendChatRoomMessage("EVENT","방장후보군이 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
+                messageService.sendChatRoomMessage("EVENT","방장후보군이 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
 
                 if (chatRoom.getChatStatus().equals("CREATED")) {
                     checkParticipantsDisconnectedStatus();
@@ -203,7 +205,7 @@ public class ParticipantStatusSchedulerService {
                 log.info("Disconnected된 기존 방장의 닉네임: {}", participant.getNickName());
 
                 String message =  participant.getNickName() + "님이 퇴장하셨습니다.";
-                webSocketService.sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
+                messageService.sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
                 chatRoomRepository.save(updatedChatRoom);
 
             }
@@ -218,7 +220,7 @@ public class ParticipantStatusSchedulerService {
             log.info("Disconnected된 참가자 닉네임: {}", participant.getNickName());
 
             String message =  participant.getNickName() + "님이 퇴장하셨습니다.";
-            webSocketService.sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
+            messageService.sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
 
         }
         if (chatRoom.getChatStatus().equals("STARTED")) {
