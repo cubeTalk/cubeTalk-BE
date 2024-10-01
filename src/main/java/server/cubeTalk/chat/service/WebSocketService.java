@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import server.cubeTalk.chat.model.dto.ChatRoomCommonMessageResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomParticipantsListResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomProgressResponseDto;
 import server.cubeTalk.chat.model.dto.ChatRoomVoteResultResponseDto;
@@ -306,6 +307,12 @@ public class WebSocketService {
 
         messagingTemplate.convertAndSend("/topic/"+chatRoom.getId() + ".participants.list", CommonResponseDto.success(responseDto));
 
+    }
+
+    /* 메세지 전달 */
+    public void sendChatRoomMessage(String eventType, String messageContent, String destination) {
+        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto(eventType, messageContent);
+        messagingTemplate.convertAndSend(destination, chatMessage);
     }
 
 
