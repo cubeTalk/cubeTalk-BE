@@ -618,7 +618,7 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
         final String title = "참여자목록 불러오기";
-        if (!chatRoom.getChatMode().equals(chatRoomReadyStatusRequestDto.getType()) || !chatRoomReadyStatusRequestDto.getType().equals("찬반")) {
+        if (!chatRoom.getChatMode().equals(chatRoomReadyStatusRequestDto.getType()) && !(chatRoomReadyStatusRequestDto.getType().equals("찬반") || chatRoomReadyStatusRequestDto.getType().equals("자유"))) {
             webSocketService.sendErrorMessage(title, "채팅방 모드와 request의 type이 일치하지않습니다.");
             throw new IllegalArgumentException("채팅방 모드와 request의 type이 일치하지않습니다.");
         }
