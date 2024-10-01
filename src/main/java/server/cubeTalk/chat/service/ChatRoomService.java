@@ -174,9 +174,10 @@ public class ChatRoomService {
         }
 
         String message = nickName + "님이 입장하셨습니다.";
-        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto("ENTER", message);
-        messageSendingOperations.convertAndSend( "/topic/chat." + chatRoom.getChannelId(), chatMessage);
-        if (chatRoomJoinRequestDto.getRole().equals("찬반")) messageSendingOperations.convertAndSend( "/topic/chat." + subchannelId, chatMessage);
+        sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
+        if (chatRoomJoinRequestDto.getRole().equals("찬반")) {
+            sendChatRoomMessage("EVENT",message,"/topic/chat." + subchannelId);
+        }
 
         memberRepository.save(member);
         chatRoomRepository.save(chatRoom);
@@ -322,7 +323,29 @@ public class ChatRoomService {
 
         webSocketService.sendParticiPantsList(updatedChatRoom);
 
+        // 팀 변경 메시지
+        String message = searchParticipant.getNickName() + "님이 " + chatRoomTeamChangeRequestDto.getRole() + "팀으로 팀을 변경하셨습니다.";
+        sendChatRoomMessage("EVENT", message, "/topic/chat." + chatRoom.getChannelId());
+
+        // 입장 메시지
+        String subMessage = searchParticipant.getNickName() + "님이 입장하셨습니다.";
+        if (chatRoom.getChatMode().equals("찬반")) {
+            sendChatRoomMessage("EVENT", subMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
+        }
+
+        // 퇴장 메시지
+        String subExitMessage = searchParticipant.getNickName() + "님이 퇴장하셨습니다.";
+        if (chatRoom.getChatMode().equals("찬반")) {
+            sendChatRoomMessage("EVENT", subExitMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
+        }
+
         return new ChatRoomTeamChangeResponseDto(id, chatRoom.getChannelId(), changeSubChannelId[0], chatRoomTeamChangeRequestDto.getSubChannelId());
+    }
+
+    /* 메세지 전달 */
+    public void sendChatRoomMessage(String eventType, String messageContent, String destination) {
+        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto(eventType, messageContent);
+        messageSendingOperations.convertAndSend(destination, chatMessage);
     }
 
 
@@ -618,7 +641,7 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
         final String title = "참여자목록 불러오기";
-        if (!chatRoom.getChatMode().equals(chatRoomReadyStatusRequestDto.getType()) || !chatRoomReadyStatusRequestDto.getType().equals("찬반")) {
+        if (!chatRoom.getChatMode().equals(chatRoomReadyStatusRequestDto.getType()) && !(chatRoomReadyStatusRequestDto.getType().equals("찬반") || chatRoomReadyStatusRequestDto.getType().equals("자유"))) {
             webSocketService.sendErrorMessage(title, "채팅방 모드와 request의 type이 일치하지않습니다.");
             throw new IllegalArgumentException("채팅방 모드와 request의 type이 일치하지않습니다.");
         }
