@@ -1,13 +1,13 @@
 package server.cubeTalk.chat.service;
 
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +16,8 @@ import server.cubeTalk.chat.model.dto.*;
 import server.cubeTalk.chat.model.entity.*;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 import server.cubeTalk.chat.repository.MessageRepository;
+import server.cubeTalk.common.dto.CommonResponseDto;
+import server.cubeTalk.common.service.ParticipantStatusSchedulerService;
 import server.cubeTalk.common.util.DateTimeUtils;
 import server.cubeTalk.common.util.RandomNicknameGenerator;
 import server.cubeTalk.member.model.entity.Member;
@@ -34,6 +36,8 @@ public class ChatRoomService {
     private final WebSocketService webSocketService;
     private final SubscriptionManager subscriptionManager;
     private final SimpMessageSendingOperations messageSendingOperations;
+    private final ParticipantStatusSchedulerService participantStatusSchedulerService;
+    private final MessageService messageService;
     private boolean isRollBack = false;
 
     /* 채팅방 생성 */
@@ -159,24 +163,25 @@ public class ChatRoomService {
                     break;
                 }
             }
+
+            if (subchannelId == null) {
+                subchannelId = UUID.randomUUID().toString();
+                SubChatRoom newSubChatRoom = SubChatRoom.builder()
+                        .subChannelId(subchannelId)
+                        .type(chatRoomJoinRequestDto.getRole())
+                        .participants(new ArrayList<>()) // 빈 리스트로 초기화
+                        .build();
+
+                newSubChatRoom.addParticipant(participant);
+                chatRoom.getSubChatRooms().add(newSubChatRoom);
+            }
         }
 
-        if (subchannelId == null) {
-            subchannelId = UUID.randomUUID().toString();
-            SubChatRoom newSubChatRoom = SubChatRoom.builder()
-                    .subChannelId(subchannelId)
-                    .type(chatRoomJoinRequestDto.getRole())
-                    .participants(new ArrayList<>()) // 빈 리스트로 초기화
-                    .build();
-
-            newSubChatRoom.addParticipant(participant);
-            chatRoom.getSubChatRooms().add(newSubChatRoom);
-        }
 
         String message = nickName + "님이 입장하셨습니다.";
-        webSocketService.sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
+        messageService.sendChatRoomMessage("EVENT",message,"/topic/chat." + chatRoom.getChannelId());
         if (chatRoomJoinRequestDto.getRole().equals("찬반")) {
-            webSocketService.sendChatRoomMessage("EVENT",message,"/topic/chat." + subchannelId);
+            messageService.sendChatRoomMessage("EVENT",message,"/topic/chat." + subchannelId);
         }
 
         memberRepository.save(member);
@@ -325,18 +330,18 @@ public class ChatRoomService {
 
         // 팀 변경 메시지
         String message = searchParticipant.getNickName() + "님이 " + chatRoomTeamChangeRequestDto.getRole() + "팀으로 팀을 변경하셨습니다.";
-        webSocketService.sendChatRoomMessage("EVENT", message, "/topic/chat." + chatRoom.getChannelId());
+        messageService.sendChatRoomMessage("EVENT", message, "/topic/chat." + chatRoom.getChannelId());
 
         // 입장 메시지
         String subMessage = searchParticipant.getNickName() + "님이 입장하셨습니다.";
         if (chatRoom.getChatMode().equals("찬반")) {
-            webSocketService.sendChatRoomMessage("EVENT", subMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
+            messageService.sendChatRoomMessage("EVENT", subMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
         }
 
         // 퇴장 메시지
         String subExitMessage = searchParticipant.getNickName() + "님이 퇴장하셨습니다.";
         if (chatRoom.getChatMode().equals("찬반")) {
-            webSocketService.sendChatRoomMessage("EVENT", subExitMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
+            messageService.sendChatRoomMessage("EVENT", subExitMessage, "/topic/chat." + Arrays.toString(changeSubChannelId));
         }
 
         return new ChatRoomTeamChangeResponseDto(id, chatRoom.getChannelId(), changeSubChannelId[0], chatRoomTeamChangeRequestDto.getSubChannelId());
@@ -783,6 +788,11 @@ public class ChatRoomService {
 
             if (support < 1 || opposite < 1) throw new IllegalArgumentException("찬성, 반대 측이 최소 1명이상이어야 시작할 수 있습니다.");
         }
+        if (chatRoom.getChatMode().equals("자유")) {
+            long free = chatRoom.getParticipants().stream().filter(participant -> participant.getRole().equals("자유")).count();
+            if (free < 2)
+                throw new IllegalArgumentException("인원이 최소 2명이상이어야 시작할 수 있습니다.");
+        }
 
         ChatRoom updatedChatRoom = chatRoom.toBuilder()
                 .chatStatus("STARTED")
@@ -933,6 +943,117 @@ public class ChatRoomService {
                 chatRoom.getUpdatedAt()
         );
     }
+
+    /* 채팅방 나가기 */
+    @Transactional
+    public void exitChatRoom(String id, String memberId) {
+
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
+
+        Participant participant = chatRoom.getParticipants().stream()
+                .filter(p -> p.getMemberId().equals(memberId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("참가자를 찾을 수 없습니다."));
+
+        if (chatRoom.getOwnerId().equals(memberId)) {
+            handleOwnerExit(chatRoom, participant);
+        } else {
+            // 방장이 아닌 참가자 제거
+            removeParticipant(chatRoom, participant);
+            chatRoomRepository.save(chatRoom);
+        }
+
+        memberRepository.deleteByMemberId(memberId);
+
+        participantStatusSchedulerService.checkParticipantsDisconnectedStatus();
+
+        // 나간 후 참가자 목록 업데이트 후 전송
+        sendParticipantListUpdate(chatRoom);
+        messageService.sendChatRoomMessage("EVENT", participant.getNickName() + "님이 퇴장하셨습니다.", "/topic/chat." + chatRoom.getChannelId());
+    }
+
+    /* 방장 나가기 처리 */
+    private void handleOwnerExit(ChatRoom chatRoom, Participant participant) {
+        List<Participant> availableParticipants = checkAvailableParticipants(chatRoom);
+        if (!availableParticipants.isEmpty()) {
+            removeParticipant(chatRoom, participant);
+            assignNewOwner(chatRoom, availableParticipants.get(0));
+        } else {
+            // 후보군이 없다면 채팅방 삭제
+            removeParticipant(chatRoom, participant);
+            System.out.println("후보군이 없어서 채팅방 삭작");
+            chatRoomRepository.delete(chatRoom);
+        }
+    }
+
+    /* 참가자 제거 메서드 */
+    private void removeParticipant(ChatRoom chatRoom, Participant participant) {
+        chatRoom.getParticipants().removeIf(p -> p.getMemberId().equals(participant.getMemberId()));
+        if ("찬반".equals(chatRoom.getChatMode())) {
+            chatRoom.getSubChatRooms().forEach(subChatRoom ->
+                    subChatRoom.getParticipants().removeIf(p -> p.getMemberId().equals(participant.getMemberId())));
+        }
+    }
+
+    /* 새로운 방장 설정 메서드 */
+    private void assignNewOwner(ChatRoom chatRoom, Participant newOwner) {
+        // 새로운 방장 설정
+        newOwner = newOwner.toBuilder().status("OWNER").build();
+
+        // 메인 채팅방 및 서브 채팅방에서 해당 참가자 제거
+        removeParticipant(chatRoom, newOwner);
+
+        // 메인 채팅방에 새 방장 추가
+        chatRoom.getParticipants().add(newOwner);
+
+        // 서브 채팅방에도 새 방장 추가 (찬반 모드일 때만)
+        if ("찬반".equals(chatRoom.getChatMode())) {
+            addParticipantToSubChatRooms(chatRoom, newOwner);
+        }
+
+        // 새로 업데이트된 방장 정보를 포함한 채팅방 객체 생성 및 저장
+        ChatRoom updatedChatRoom = chatRoom.toBuilder()
+                .ownerId(newOwner.getMemberId())
+                .build();
+
+        chatRoomRepository.save(updatedChatRoom);
+    }
+
+    /* 서브 채팅방에 새로운 참가자 추가 */
+    private void addParticipantToSubChatRooms(ChatRoom chatRoom, Participant newParticipant) {
+        for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
+            if (subChatRoom.getType().equals(newParticipant.getRole())) {
+                subChatRoom.getParticipants().add(newParticipant);
+            }
+        }
+    }
+
+    /* 방장 후보군 체크 */
+    public List<Participant> checkAvailableParticipants(ChatRoom chatRoom) {
+        return chatRoom.getParticipants().stream()
+                .filter(p -> !"DISCONNECTED".equals(p.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    /* 참가자 목록 업데이트 전송 */
+    private void sendParticipantListUpdate(ChatRoom chatRoom) {
+        List<ChatRoomParticipantsListResponseDto> responseDto = chatRoom.getParticipants().stream()
+                .map(p -> new ChatRoomParticipantsListResponseDto(
+                        p.getNickName(),
+                        p.getRole(),
+                        p.getStatus()
+                ))
+                .collect(Collectors.toList());
+
+        messageSendingOperations.convertAndSend("/topic/" + chatRoom.getId() + ".participants.list", CommonResponseDto.success(responseDto));
+    }
+
+
+
+
+
+
 }
 
 
