@@ -983,7 +983,7 @@ public class ChatRoomService {
                 }
             }
 
-            memberRepository.deleteByMemberId(memberId);
+            deleteMember(memberId);
 
             // 변경된 데이터로 채팅방 다시 조회
             ChatRoom updatedChatRoom = mongoTemplate.findById(id, ChatRoom.class);
@@ -1132,6 +1132,11 @@ public class ChatRoomService {
                 .collect(Collectors.toList());
 
         messageSendingOperations.convertAndSend("/topic/" + chatRoom.getId() + ".participants.list", CommonResponseDto.success(responseDto));
+    }
+
+    /* memberId 삭제 */
+    public void deleteMember(String memberId) {
+        mongoTemplate.remove(Query.query(Criteria.where("memberId").is(memberId)), Member.class);
     }
 
 
