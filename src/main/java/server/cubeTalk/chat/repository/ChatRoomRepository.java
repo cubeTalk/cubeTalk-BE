@@ -1,13 +1,18 @@
 package server.cubeTalk.chat.repository;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface ChatRoomRepository extends MongoRepository<ChatRoom, String> {
 
     ChatRoom findByChannelId(String channelId);

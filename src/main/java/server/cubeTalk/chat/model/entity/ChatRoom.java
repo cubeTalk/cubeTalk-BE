@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 import server.cubeTalk.common.entity.BaseTimeStamp;
 
@@ -17,6 +19,10 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @Document(collection = "chatRoom")
+@CompoundIndexes({
+        @CompoundIndex(def = "{'id': 1, 'subChatRooms.type': 1}"),
+        @CompoundIndex(def = "{'id': 1, 'participants.memberId': 1}")
+})
 public class ChatRoom extends BaseTimeStamp {
 
     @Id

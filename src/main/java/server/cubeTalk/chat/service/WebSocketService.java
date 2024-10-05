@@ -309,11 +309,6 @@ public class WebSocketService {
 
     }
 
-    /* 메세지 전달 */
-    public void sendChatRoomMessage(String eventType, String messageContent, String destination) {
-        ChatRoomCommonMessageResponseDto chatMessage = new ChatRoomCommonMessageResponseDto(eventType, messageContent);
-        messagingTemplate.convertAndSend(destination, chatMessage);
-    }
 
 
 
