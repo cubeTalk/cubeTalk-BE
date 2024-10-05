@@ -269,4 +269,25 @@ public class ChatController {
         return new ResponseEntity<>(CommonResponseDto.success(responseDtoPage), HttpStatus.OK);
     }
 
+    @DeleteMapping("/{id}/member/{memberId}")
+    @Operation(summary = "채팅방 나가기 API", description = "채팅방을 나갑니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "success",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.class))}),
+            @ApiResponse(responseCode = "400", description = "fail",
+                    content = {@Content(schema = @Schema(implementation = CommonResponseDto.CommonResponseErrorDto.class))})
+    })
+    public ResponseEntity<CommonResponseDto.CommonResponseSuccessDto> exitChatRoom(
+            @PathVariable("id")
+            @Pattern(regexp = "^[a-fA-F0-9]{24}$",
+                    message = "Invalid UUID format") String id,
+            @PathVariable("memberId")
+            @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    message = "Invalid UUID format") String memberId
+    ) {
+        chatRoomService.exitChatRoom(id,memberId);
+
+        return new ResponseEntity<>(CommonResponseDto.CommonResponseSuccessDto.success(HttpStatus.OK.value(),"요청처리에 성공했습니다."),HttpStatus.OK);
+    }
+
 }

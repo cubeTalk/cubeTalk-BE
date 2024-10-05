@@ -2,6 +2,11 @@ package server.cubeTalk.common.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,17 +39,23 @@ public class ParticipantStatusSchedulerService {
     private final SimpMessageSendingOperations messageSendingOperations;
     private final MemberRepository memberRepository;
     private final MessageService messageService;
+    private final MongoTemplate mongoTemplate;
+
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
+
+    public void deleteSomething(String id) {
+        mongoTemplate.remove(Query.query(Criteria.where("id").is(id)), ChatRoom.class);
+    }
+
+
     @Transactional
     public void deleteChatRoom(ChatRoom chatRoom) {
-        chatRoom.getParticipants().clear();
-        chatRoom.getSubChatRooms().clear();
-        chatRoomRepository.save(chatRoom);
-        chatRoomRepository.delete(chatRoom);
-
+//        chatRoomRepository.delete(chatRoom);
+        deleteSomething(chatRoom.getId());
     }
+
     @Transactional
     public void deleteMember(String memberId) {
         memberRepository.deleteByMemberId(memberId);
@@ -158,10 +169,13 @@ public class ParticipantStatusSchedulerService {
             List<Participant> availableParticipants = chatRoom.getParticipants().stream()
                     .filter(p -> !p.getStatus().equals("DISCONNECTED"))
                     .toList();
+            log.info("후보군 {}",availableParticipants);
             if (availableParticipants.isEmpty()) {
                 // 방장 후보군이 없는 경우
                 // 메인,서브채팅방에서 기존 방장 제거
                 removeOwnerMemberFromChatRoom(chatRoom,participant);
+                chatRoomRepository.save(chatRoom);
+                log.info("방장 제거");
 
                 messageService.sendChatRoomMessage("EVENT","방장후보군이 없어 5초 뒤 채팅이 종료됩니다.","/topic/chat." + chatRoom.getChannelId());
 

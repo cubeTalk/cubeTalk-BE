@@ -1,13 +1,20 @@
 package server.cubeTalk.chat.service;
 
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import com.mongodb.BasicDBObject;
+import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +34,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
@@ -38,6 +47,7 @@ public class ChatRoomService {
     private final SimpMessageSendingOperations messageSendingOperations;
     private final ParticipantStatusSchedulerService participantStatusSchedulerService;
     private final MessageService messageService;
+    private final MongoTemplate mongoTemplate;
     private boolean isRollBack = false;
 
     /* 채팅방 생성 */
@@ -210,7 +220,7 @@ public class ChatRoomService {
         return true;
     }
 
-    @Transactional
+
     /* 팀 변경 */
     public ChatRoomTeamChangeResponseDto changeTeam(String id, String memberId, ChatRoomTeamChangeRequestDto chatRoomTeamChangeRequestDto) {
         if (isRollBack) {
@@ -348,8 +358,6 @@ public class ChatRoomService {
     }
 
 
-
-
     /* 참가 인원 검증 */
     public void participantsValidate(ChatRoom chatRoom, ChatRoomJoinRequestDto dto) {
 
@@ -406,7 +414,6 @@ public class ChatRoomService {
 
 
     /* 구독 실패시 롤백 처리 */
-    @Transactional
     public String subscriptionFailed(String id, ChatRoomSubscriptionFailureDto ChatRoomSubscriptionFailureDto) {
         final String ENTER_FALIED = "참가실패";
         final String TEAM_CHANGE_FALIED = "변경실패";
@@ -459,7 +466,7 @@ public class ChatRoomService {
     }
 
     /* 참가 실패 롤백 처리 */
-    @Transactional
+
     public void rollbackJoin(ChatRoom chatRoom, String memberId, String originRole) {
         memberRepository.deleteByMemberId(memberId);
         chatRoom.getParticipants().removeIf(participant -> participant.getMemberId().equals(memberId));
@@ -473,7 +480,7 @@ public class ChatRoomService {
     }
 
     /* 팀 변경 실패 롤백 처리 */
-    @Transactional
+
     public void rollbackTeamChange(ChatRoom chatRoom, String memberId, String originRole, String newRole) {
 
         Participant infoParticipant = chatRoom.getParticipants().stream()
@@ -637,7 +644,6 @@ public class ChatRoomService {
     }
 
     /* 준비상태 변경에 따른 참여자 목록 */
-    @Transactional
     public List<ChatRoomParticipantsListResponseDto> sendParticipantsList(String id, ChatRoomReadyStatusRequestDto chatRoomReadyStatusRequestDto) {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방을 찾을 수 없습니다."));
@@ -702,7 +708,6 @@ public class ChatRoomService {
 
     }
 
-    @Transactional
     public ChatRoomSendMessageResponseDto sendChatMessage(String channelId, ChatRoomSendMessageRequestDto chatRoomSendMessageRequestDto) {
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomSendMessageRequestDto.getId())
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
@@ -767,7 +772,7 @@ public class ChatRoomService {
     }
 
     /* 채팅방 시작 */
-    @Transactional
+
     public String startChat(String id, ChatRoomStartRequestDto chatRoomStartRequestDto) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(id)
@@ -817,7 +822,7 @@ public class ChatRoomService {
         return "채팅방 시작 완료";
     }
 
-    @Transactional
+
     public void voteChat(String id, ChatRoomVoteRequestDto chatRoomVoteRequestDto) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(id)
@@ -850,7 +855,7 @@ public class ChatRoomService {
 
     }
 
-    @Transactional
+
     private Vote buildVote(ChatRoomVoteRequestDto chatRoomVoteRequestDto, int support, int opposite,ChatRoom chatRoom) {
 
         Vote vote = chatRoom.getVote() != null ? chatRoom.getVote() : new Vote(0, 0, new ArrayList<>());
@@ -945,95 +950,175 @@ public class ChatRoomService {
     }
 
     /* 채팅방 나가기 */
-    @Transactional
     public void exitChatRoom(String id, String memberId) {
+        // MongoDB의 findAndModify를 사용하여 원자적 업데이트 수행
+        Query query = Query.query(Criteria.where("id").is(id));
+        ChatRoom chatRoom = mongoTemplate.findOne(query, ChatRoom.class);
 
-        ChatRoom chatRoom = chatRoomRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("해당 채팅방이 존재하지 않습니다."));
+        if (chatRoom == null) {
+            throw new IllegalArgumentException("해당 채팅방이 존재하지 않습니다.");
+        }
 
         Participant participant = chatRoom.getParticipants().stream()
                 .filter(p -> p.getMemberId().equals(memberId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("참가자를 찾을 수 없습니다."));
 
-        if (chatRoom.getOwnerId().equals(memberId)) {
-            handleOwnerExit(chatRoom, participant);
-        } else {
-            // 방장이 아닌 참가자 제거
-            removeParticipant(chatRoom, participant);
-            chatRoomRepository.save(chatRoom);
+        try {
+            if (chatRoom.getOwnerId().equals(memberId)) {
+                handleOwnerExit(chatRoom, participant);
+            } else {
+                // 원자적 업데이트 수행
+                Update update = new Update().pull("participants",
+                        Query.query(Criteria.where("memberId").is(memberId)));
+
+                mongoTemplate.findAndModify(
+                        Query.query(Criteria.where("id").is(id)),
+                        update,
+                        ChatRoom.class
+                );
+
+                if ("찬반".equals(chatRoom.getChatMode())) {
+                    removeParticipantFromSubChatRooms(chatRoom.getId(), memberId);
+                }
+            }
+
+            memberRepository.deleteByMemberId(memberId);
+
+            // 변경된 데이터로 채팅방 다시 조회
+            ChatRoom updatedChatRoom = mongoTemplate.findById(id, ChatRoom.class);
+            if (updatedChatRoom != null) {
+                sendParticipantListUpdate(updatedChatRoom);
+                messageService.sendChatRoomMessage(
+                        "EVENT",
+                        participant.getNickName() + "님이 퇴장하셨습니다.",
+                        "/topic/chat." + updatedChatRoom.getChannelId()
+                );
+            }
+        } finally {
+
+            if (!("찬반".equals(chatRoom.getChatMode()) && "CREATED".equals(chatRoom.getChatStatus())
+                    && chatRoom.getParticipants().size() > 0)) {
+                participantStatusSchedulerService.checkParticipantsDisconnectedStatus();
+            }
+
         }
-
-        memberRepository.deleteByMemberId(memberId);
-
-        participantStatusSchedulerService.checkParticipantsDisconnectedStatus();
-
-        // 나간 후 참가자 목록 업데이트 후 전송
-        sendParticipantListUpdate(chatRoom);
-        messageService.sendChatRoomMessage("EVENT", participant.getNickName() + "님이 퇴장하셨습니다.", "/topic/chat." + chatRoom.getChannelId());
     }
 
-    /* 방장 나가기 처리 */
+
     private void handleOwnerExit(ChatRoom chatRoom, Participant participant) {
         List<Participant> availableParticipants = checkAvailableParticipants(chatRoom);
+
+        // 1. 기존 방장을 참가자 목록에서 제거
+        Update ownerUpdate = new Update()
+                .pull("participants", Query.query(Criteria.where("memberId").is(participant.getMemberId())));
+
+        // 찬반 모드인 경우 서브채팅방에서도 제거
+        if ("찬반".equals(chatRoom.getChatMode())) {
+            ownerUpdate.pull("subChatRooms.$[].participants",
+                    new BasicDBObject("memberId", participant.getMemberId()));
+        }
+
+        mongoTemplate.findAndModify(
+                Query.query(Criteria.where("id").is(chatRoom.getId())),
+                ownerUpdate,
+                ChatRoom.class
+        );
+
         if (!availableParticipants.isEmpty()) {
-            removeParticipant(chatRoom, participant);
-            assignNewOwner(chatRoom, availableParticipants.get(0));
-        } else {
-            // 후보군이 없다면 채팅방 삭제
-            removeParticipant(chatRoom, participant);
-            System.out.println("후보군이 없어서 채팅방 삭작");
-            chatRoomRepository.delete(chatRoom);
-        }
-    }
+            Participant newOwner = availableParticipants.get(0);
 
-    /* 참가자 제거 메서드 */
-    private void removeParticipant(ChatRoom chatRoom, Participant participant) {
-        chatRoom.getParticipants().removeIf(p -> p.getMemberId().equals(participant.getMemberId()));
-        if ("찬반".equals(chatRoom.getChatMode())) {
-            chatRoom.getSubChatRooms().forEach(subChatRoom ->
-                    subChatRoom.getParticipants().removeIf(p -> p.getMemberId().equals(participant.getMemberId())));
-        }
-    }
+            // 새로운 방장의 정보를 가져와서 상태를 OWNER로 변경
+            Participant updatedOwner = newOwner.toBuilder()
+                    .status("OWNER")
+                    .build();
 
-    /* 새로운 방장 설정 메서드 */
-    private void assignNewOwner(ChatRoom chatRoom, Participant newOwner) {
-        // 새로운 방장 설정
-        newOwner = newOwner.toBuilder().status("OWNER").build();
+            // BasicDBObject 대신 Document 사용하여 더 명확한 데이터 구조 표현
+            Document newOwnerParticipant = new Document()
+                    .append("memberId", updatedOwner.getMemberId())
+                    .append("nickName", updatedOwner.getNickName())
+                    .append("role", updatedOwner.getRole())
+                    .append("status", "OWNER");
 
-        // 메인 채팅방 및 서브 채팅방에서 해당 참가자 제거
-        removeParticipant(chatRoom, newOwner);
+            // 필요한 다른 필드들도 추가
 
-        // 메인 채팅방에 새 방장 추가
-        chatRoom.getParticipants().add(newOwner);
+            // 메인 채팅방에서 새로운 방장 업데이트
+            Update mainChatRoomUpdate = new Update()
+                    .set("ownerId", updatedOwner.getMemberId());
 
-        // 서브 채팅방에도 새 방장 추가 (찬반 모드일 때만)
-        if ("찬반".equals(chatRoom.getChatMode())) {
-            addParticipantToSubChatRooms(chatRoom, newOwner);
-        }
+            // 기존 참가자 제거 후 새로운 상태로 추가
+            mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("id").is(chatRoom.getId())),
+                    new Update().pull("participants",
+                            Query.query(Criteria.where("memberId").is(updatedOwner.getMemberId()))),
+                    ChatRoom.class
+            );
 
-        // 새로 업데이트된 방장 정보를 포함한 채팅방 객체 생성 및 저장
-        ChatRoom updatedChatRoom = chatRoom.toBuilder()
-                .ownerId(newOwner.getMemberId())
-                .build();
+            mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("id").is(chatRoom.getId())),
+                    new Update().push("participants", newOwnerParticipant),
+                    ChatRoom.class
+            );
 
-        chatRoomRepository.save(updatedChatRoom);
-    }
+            if ("찬반".equals(chatRoom.getChatMode())) {
+                // 서브채팅방 업데이트
+                for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
+                    if (subChatRoom.getType().equals(updatedOwner.getRole())) {
+                        Query subChatRoomQuery = Query.query(
+                                new Criteria().andOperator(
+                                        Criteria.where("id").is(chatRoom.getId()),
+                                        Criteria.where("subChatRooms.type").is(subChatRoom.getType())
+                                )
+                        );
 
-    /* 서브 채팅방에 새로운 참가자 추가 */
-    private void addParticipantToSubChatRooms(ChatRoom chatRoom, Participant newParticipant) {
-        for (SubChatRoom subChatRoom : chatRoom.getSubChatRooms()) {
-            if (subChatRoom.getType().equals(newParticipant.getRole())) {
-                subChatRoom.getParticipants().add(newParticipant);
+                        // 서브채팅방에서 기존 참가자 제거
+                        mongoTemplate.updateFirst(
+                                subChatRoomQuery,
+                                new Update().pull("subChatRooms.$.participants",
+                                        new BasicDBObject("memberId", updatedOwner.getMemberId())),
+                                ChatRoom.class
+                        );
+
+                        // 새로운 방장 상태로 추가
+                        mongoTemplate.updateFirst(
+                                subChatRoomQuery,
+                                new Update().push("subChatRooms.$.participants", newOwnerParticipant),
+                                ChatRoom.class
+                        );
+                    }
+                }
             }
+
+            // 최종적으로 방장 ID 업데이트
+            mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("id").is(chatRoom.getId())),
+                    Update.update("ownerId", updatedOwner.getMemberId()),
+                    ChatRoom.class
+            );
+        } else {
+            participantStatusSchedulerService.deleteSomething(chatRoom.getId());
         }
     }
 
-    /* 방장 후보군 체크 */
+    // 방장 후보 체크 메서드 수정
     public List<Participant> checkAvailableParticipants(ChatRoom chatRoom) {
         return chatRoom.getParticipants().stream()
-                .filter(p -> !"DISCONNECTED".equals(p.getStatus()))
+                .filter(p -> !p.getMemberId().equals(chatRoom.getOwnerId())) // 현재 방장 제외
+                .filter(p -> !"DISCONNECTED".equals(p.getStatus())) // 연결 끊긴 참가자 제외
                 .collect(Collectors.toList());
+    }
+
+
+    /* 서브채팅방 참가자 제거 메서드 */
+    private void removeParticipantFromSubChatRooms(String chatRoomId, String memberId) {
+        Update update = new Update().pull("subChatRooms.$[].participants",
+                Query.query(Criteria.where("memberId").is(memberId)));
+
+        mongoTemplate.findAndModify(
+                Query.query(Criteria.where("id").is(chatRoomId)),
+                update,
+                ChatRoom.class
+        );
     }
 
     /* 참가자 목록 업데이트 전송 */
@@ -1048,8 +1133,6 @@ public class ChatRoomService {
 
         messageSendingOperations.convertAndSend("/topic/" + chatRoom.getId() + ".participants.list", CommonResponseDto.success(responseDto));
     }
-
-
 
 
 
