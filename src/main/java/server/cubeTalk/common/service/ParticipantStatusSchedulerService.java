@@ -21,6 +21,7 @@ import server.cubeTalk.chat.service.MessageService;
 import server.cubeTalk.chat.service.WebSocketService;
 import server.cubeTalk.common.dto.CommonResponseDto;
 import server.cubeTalk.common.util.DateTimeUtils;
+import server.cubeTalk.member.model.entity.Member;
 import server.cubeTalk.member.repository.MemberRepository;
 
 
@@ -49,6 +50,10 @@ public class ParticipantStatusSchedulerService {
         mongoTemplate.remove(Query.query(Criteria.where("id").is(id)), ChatRoom.class);
     }
 
+    public void deleteMemberSomething(String memberId) {
+        mongoTemplate.remove(Query.query(Criteria.where("memberId").is(memberId)), Member.class);
+    }
+
 
     @Transactional
     public void deleteChatRoom(ChatRoom chatRoom) {
@@ -58,7 +63,7 @@ public class ParticipantStatusSchedulerService {
 
     @Transactional
     public void deleteMember(String memberId) {
-        memberRepository.deleteByMemberId(memberId);
+        deleteMemberSomething(memberId);
         log.info("삭제된 memberId {}",memberId);
     }
 
