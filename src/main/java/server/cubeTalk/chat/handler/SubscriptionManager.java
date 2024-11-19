@@ -2,12 +2,12 @@ package server.cubeTalk.chat.handler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.repository.ChatRoomRepository;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @Component
@@ -16,83 +16,75 @@ import java.util.regex.Pattern;
 public class SubscriptionManager {
 
     private final ChatRoomRepository chatRoomRepository;
-    // 구독 상태를 관리하는 맵 (세션 ID -> 구독 채널 리스트)
-    private final ConcurrentHashMap<String, Set<String>> subscriptionMap = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, String> sessionNickNameMap = new ConcurrentHashMap<>();
+    private final RedisTemplate<String,Object> redisTemplate;
+    private static final String SUBSCRIPTION_KEY = "subscriptions";
+    private final String SESSION_NICKNAME_KEY = "sessionNicknames";
 
     /* 구독 요청이 들어오면 구독 상태를 저장 */
     // 닉네임이 있을 때 사용하는 메서드
     public void addSubscription(String sessionId, String channelId, String nickName) {
-        subscriptionMap.computeIfAbsent(sessionId, k -> new HashSet<>()).add(channelId);
+        // 구독 채널 추가
+        redisTemplate.opsForHash().put(SUBSCRIPTION_KEY, sessionId, channelId);
 
+        // 닉네임이 있을 경우 추가
         if (nickName != null && !nickName.isEmpty()) {
-            sessionNickNameMap.put(sessionId, nickName);
+            redisTemplate.opsForHash().put(SESSION_NICKNAME_KEY, sessionId, nickName);
         }
     }
 
     // 닉네임 없이 구독만 처리하는 메서드
     public void addSubscription(String sessionId, String channelId) {
-        subscriptionMap.computeIfAbsent(sessionId, k -> new HashSet<>()).add(channelId);
+        redisTemplate.opsForHash().put(SUBSCRIPTION_KEY, sessionId, channelId);
     }
 
 
     // 구독 해제 시 구독 상태에서 제거
     public void removeSubscription(String sessionId, String channelId) {
-        Set<String> subscriptions = subscriptionMap.get(sessionId);
-        if (subscriptions != null) {
-            subscriptions.remove(channelId);
-        }
+        redisTemplate.opsForHash().delete(SUBSCRIPTION_KEY, sessionId, channelId);
     }
 
     // 구독 여부를 확인
     public boolean isSubscribed(String sessionId, String channelId) {
-        return subscriptionMap.containsKey(sessionId) && subscriptionMap.get(sessionId).contains(channelId);
+        return redisTemplate.opsForHash().hasKey(SUBSCRIPTION_KEY, sessionId);
     }
 
     // 세션이 끊길 때 해당 세션의 모든 구독을 제거
     public void removeSession(String sessionId) {
-        subscriptionMap.remove(sessionId);
-        sessionNickNameMap.remove(sessionId);
+        redisTemplate.opsForHash().delete(SUBSCRIPTION_KEY, sessionId);
+        redisTemplate.opsForHash().delete(SESSION_NICKNAME_KEY, sessionId);
     }
 
 
     public void printSubscriptions() {
-        subscriptionMap.forEach((sessionId, channels) ->
-                System.out.println("Session: " + sessionId + " -> Channels: " + channels)
-        );
+        Map<Object, Object> subscriptions = redisTemplate.opsForHash().entries("subscriptions");
+
+        subscriptions.forEach((sessionId, channels) -> {
+            System.out.println("Session: " + sessionId + " -> Channels: " + channels);
+        });
     }
 
-    public Set<String> searchUUIDChannels(String sessionId) {
-        Set<String> channels = subscriptionMap.getOrDefault(sessionId, new HashSet<>());
 
+    public Set<String> searchUUIDChannels(String sessionId) {
+        Set<String> uuidChannels = new HashSet<>();
         String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
         Pattern pattern = Pattern.compile(uuidPattern);
 
-        // UUID에 해당하는 채널만 필터링
-        Set<String> uuidChannels = new HashSet<>();
-        for (String channel : channels) {
-            if (pattern.matcher(channel).matches()) {
-                uuidChannels.add(channel);
+        List<Object> channels = redisTemplate.opsForHash().values(SUBSCRIPTION_KEY);
+        for (Object channel : channels) {
+            if (pattern.matcher(channel.toString()).matches()) {
+                uuidChannels.add(channel.toString());
             }
         }
-
         return uuidChannels;
     }
 
     public boolean isNickNameInList(List<String> nickNames) {
-        final boolean[] isNickNameFound = {false};
+        Map<Object, Object> entries = redisTemplate.opsForHash().entries("sessionNicknames");
 
-        subscriptionMap.forEach((sessionId, channels) -> {
-            String nickName = sessionNickNameMap.get(sessionId); // sessionNickNameMap에서 sessionId로 닉네임 가져오기
-            System.out.println("Session: " + sessionId + " -> Channels: " + channels);
-
-            if (nickName != null && !nickName.isEmpty() && nickNames.contains(nickName)) {
-                isNickNameFound[0] = true;
-            }
-        });
-
-        return isNickNameFound[0];
+        return entries.values().stream()
+                .anyMatch(nickNames::contains); // nickNames 중 하나라도 포함되어 있는지 확인
     }
+
 
     /* 해당 channelId로 구독된 채팅방을 찾는 메서드 */
     public ChatRoom searchChatRoom(Set<String> channelIds) {
@@ -107,23 +99,19 @@ public class SubscriptionManager {
 
     /* sessionId로 nicnName 반환하는 메서드 */
     public String searchNickName(String sessionId) {
-        System.out.println(subscriptionMap);
-        if (subscriptionMap.containsKey(sessionId)) {
-            String nickName = sessionNickNameMap.get(sessionId);
-            return nickName;
-        }
-        return null;
+        Object nickName = redisTemplate.opsForHash().get(SESSION_NICKNAME_KEY, sessionId);
+        return nickName != null ? nickName.toString() : null;
     }
 
     /* nickName으로 sessionId를 반환하는 메서드 */
     public Optional<String> searchSessionIdByNickName(String nickName) {
-        return sessionNickNameMap.entrySet().stream()
-                .filter(entry -> nickName.equals(entry.getValue()))  // nickName이 일치하는지 확인
-                .map(Map.Entry::getKey)  // sessionId 반환
-                .findFirst();  // 첫 번째 일치하는 값만 반환
+        // Redis Hash에서 모든 엔트리를 가져와 필터링
+        Map<Object, Object> entries = redisTemplate.opsForHash().entries("sessionNicknames");
+        return entries.entrySet().stream()
+                .filter(entry -> nickName.equals(entry.getValue())) // nickName이 일치하는지 확인
+                .map(entry -> (String) entry.getKey()) // sessionId 반환
+                .findFirst(); // 첫 번째 일치하는 값만 반환
     }
-
-
 
 }
 
