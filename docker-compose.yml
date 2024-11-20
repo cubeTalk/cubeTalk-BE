@@ -24,6 +24,41 @@ services:
       - "61613:61613"  # STOMP 포트
       - "15672:15672"  # 관리 UI 포트
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml  # Prometheus 설정 파일
+    ports:
+      - "9090:9090"  # Prometheus 웹 인터페이스 포트
+    networks:
+      - monitoring-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"  # Grafana 웹 인터페이스 포트
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin     # Grafana 기본 사용자 이름
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Grafana 기본 비밀번호
+    networks:
+      - monitoring-network
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redis/data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    labels:
+      - "name=redis"
+      - "mode=standalone"
+    restart: always
+    command: redis-server /usr/local/etc/redis/redis.conf
+
   app1:
     build: .
     image: cubetalk-server:1.0
@@ -35,6 +70,15 @@ services:
       - rabbitmq
     environment:
       SPRING_DATA_MONGODB_URI: mongodb+srv://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@${MONGO_HOST}/${MONGO_DB_NAME}?retryWrites=true&w=majority
+      API_URL: "http://host.docker.internal:8080"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_VHOST: "/"
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
 
   app2:
     image: cubetalk-server:1.0
@@ -59,3 +103,6 @@ services:
 
 volumes:
   db-data:
+networks:
+  monitoring-network:
+    driver: bridge
