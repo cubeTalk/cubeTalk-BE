@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
+import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 import server.cubeTalk.chat.model.dto.ChatRoomCommonMessageResponseDto;
 import server.cubeTalk.chat.model.entity.ChatRoom;
 import server.cubeTalk.chat.model.entity.SubChatRoom;
@@ -55,37 +56,57 @@ public class WebSocketChatEventListener {
             String nativeHeaders = (String) headerAccessor.getHeader("id");
             if (nativeHeaders != null) {
                 // 정상 종료 처리
-                // 임시
                 log.info("정상 구독 해제 처리됨.");
-                messageSendingOperations.convertAndSend("/topic/error", CommonResponseDto.CommonResponseSocketErrorDto.error("구독해제",destination + "이 구독해제되었습니다."));
-
+                messageSendingOperations.convertAndSend("/topic/error",
+                        CommonResponseDto.CommonResponseSocketErrorDto.error("구독해제", destination + "이 구독해제되었습니다."));
             } else {
-                // 비정상적인 종료 처리
-                Set<String> channelId = subscriptionManager.searchUUIDChannels(sessionId);
-                log.info("channelId={}", channelId);
-                ChatRoom chatRoom = subscriptionManager.searchChatRoom(channelId);
-                log.info("chatroom={}", chatRoom);
-                String nickName = subscriptionManager.searchNickName(sessionId);
-                if (nickName == null) {
-                    throw new IllegalArgumentException("해당 닉네임이 존재하지 않습니다.");
+                // 비정상 종료 처리
+                Set<String> channelIds = subscriptionManager.searchUUIDChannels(sessionId);
+                log.info("channelIds: {}", channelIds);
+
+                if (!channelIds.isEmpty()) {
+                    ChatRoom chatRoom = subscriptionManager.searchChatRoom(channelIds);
+                    log.info("chatRoom: {}", chatRoom);
+
+                    if (chatRoom != null) {
+                        String nickName = subscriptionManager.searchNickName(sessionId);
+                        log.info("nickName: {}", nickName);
+
+                        if (nickName != null) {
+                            webSocketService.changeDisconnectParticipantStatus(chatRoom, nickName);
+                        } else {
+                            log.warn("닉네임을 찾을 수 없습니다. sessionId: {}", sessionId);
+                        }
+                    } else {
+                        log.warn("채팅방을 찾을 수 없습니다. channelIds: {}", channelIds);
+                    }
+                } else {
+                    log.warn("channelID 를 찾을 수 없습니다. sessionId: {}", sessionId);
                 }
-                webSocketService.changeDisconnectParticipantStatus(chatRoom, nickName);
             }
-        } catch (IllegalArgumentException e) {
-            log.error("에러 발생: " + e.getMessage());
-            throw e;
+        } catch (Exception e) {
+            log.error("Error disconnect event listener: ", e);
+        } finally {
+            subscriptionManager.removeSession(sessionId);
         }
-        subscriptionManager.removeSession(sessionId);
     }
 
     @EventListener
     public void handleSessionSubscribeEvent(SessionSubscribeEvent event) {
         try {
+            if (!subscriptionManager.isRedisConnected()) {
+                log.error("Redis 연결 실패!");
+                return;
+            }
             log.info("구독중..");
             StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
             System.out.println(headerAccessor.getMessageHeaders());
             String destination = headerAccessor.getDestination();
             String sessionId = headerAccessor.getSessionId();
+
+            if (sessionId == null || destination == null) {
+                throw new IllegalArgumentException("SessionId 또는 Destination이 null입니다");
+            }
 
             if (destination.startsWith("/topic/chat.")) {
 
@@ -100,7 +121,14 @@ public class WebSocketChatEventListener {
 
 
                 if (!subscriptionManager.isSubscribed(sessionId,channelId)) {
-                    subscriptionManager.addSubscription(sessionId, channelId, nickName);
+                    try {
+                        subscriptionManager.addSubscription(sessionId, channelId, nickName);
+                        log.info("Subscription added - sessionId: {}, channelId: {}, nickName: {}",
+                                sessionId, channelId, nickName);
+                    } catch (Exception e) {
+                        log.error("Redis 저장 중 오류 발생", e);
+                        throw new IllegalStateException("구독 정보 저장 실패");
+                    }
 
                     boolean isCheckDisconnectedStatus = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getStatus().equals("DISCONNECTED"));
                     boolean isCheckDisconnectedNickName = chatRoom.getParticipants().stream().anyMatch(participant -> participant.getNickName().equals(nickName));
@@ -132,19 +160,25 @@ public class WebSocketChatEventListener {
             else {
                 /* 채팅방 목적지 외 처리 */
                 String channelId = destination.substring("/topic/".length());
-                log.info("채팅방 외 구독");
-                if (destination.startsWith("/topic/progress.")) {
-                    String id = destination.substring("/topic/progress.".length());
-                    chatRoomRepository.findById(id)
-                            .orElseThrow(() -> new IllegalArgumentException("progress.{id}에 해당하는 해당 채팅방이 존재하지 않습니다."));
-                    subscriptionManager.addSubscription(sessionId, channelId);
-                } else if (destination.startsWith("/topic/error")) {
-                    subscriptionManager.addSubscription(sessionId, channelId);
-                } else {
-                    String id = destination.substring("/topic/".length(), destination.indexOf(".participants.list"));
-                    chatRoomRepository.findById(id)
-                            .orElseThrow(() -> new IllegalArgumentException("참여자 목록 구독에 해당하는 해당 채팅방이 존재하지 않습니다."));
-                    subscriptionManager.addSubscription(sessionId, channelId);
+                log.info("채팅방 외 구독 시도중...");
+
+                try {
+                    if (destination.startsWith("/topic/progress.")) {
+                        String id = destination.substring("/topic/progress.".length());
+                        chatRoomRepository.findById(id)
+                                .orElseThrow(() -> new IllegalArgumentException("progress.{id}에 해당하는 해당 채팅방이 존재하지 않습니다."));
+                        subscriptionManager.addSubscription(sessionId, channelId);
+                    } else if (destination.startsWith("/topic/error")) {
+                        subscriptionManager.addSubscription(sessionId, channelId);
+                    } else {
+                        String id = destination.substring("/topic/".length(), destination.indexOf(".participants.list"));
+                        chatRoomRepository.findById(id)
+                                .orElseThrow(() -> new IllegalArgumentException("참여자 목록 구독에 해당하는 해당 채팅방이 존재하지 않습니다."));
+                        subscriptionManager.addSubscription(sessionId, channelId);
+                    }
+                } catch (Exception e) {
+                    log.error("Redis 저장 중 오류 발생", e);
+                    throw new IllegalStateException("구독 정보 저장 실패");
                 }
 
             }
@@ -164,11 +198,21 @@ public class WebSocketChatEventListener {
     }
 
     @EventListener
-    public void  handleSessionUnSubscribeEvent(SessionSubscribeEvent event) {
-        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        String sessionId = headerAccessor.getSessionId();
-        String id = headerAccessor.getFirstNativeHeader("channelId");
-        subscriptionManager.removeSubscription(sessionId,id);
+    public void  handleSessionUnSubscribeEvent(SessionUnsubscribeEvent event) {
+        try {
+            StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+            String sessionId = headerAccessor.getSessionId();
+            String channelId = headerAccessor.getFirstNativeHeader("channelId");
+
+            log.info("구독 해제 요청 - sessionId: {}, channelId: {}", sessionId, channelId);
+
+            if (sessionId != null && channelId != null) {
+                subscriptionManager.removeSubscription(sessionId, channelId);
+                log.info("구독 해제 완료 - sessionId: {}, channelId: {}", sessionId, channelId);
+            }
+        } catch (Exception e) {
+            log.error("구독 해제 처리 중 에러 발생", e);
+        }
 
     }
 }
